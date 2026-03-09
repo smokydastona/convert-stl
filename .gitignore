@@ -3,5 +3,9 @@ package-lock.json
 node_modules
 start.sh
 dist
+dist-node
 release
 cache.json
+
+# Temporary local artifacts
+scripts/_tmp_*
