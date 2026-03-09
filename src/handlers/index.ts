@@ -10,6 +10,7 @@ import curaniHandler from "./curani.ts";
 import bunburrowsHandler from "./bunburrows.ts";
 import rgbaHandler from "./rgba.ts";
 import svgTraceHandler from "./svgTrace.ts";
+import imageToMeshHandler from "./imageToMesh.ts";
 import { renameZipHandler, renameTxtHandler } from "./rename.ts";
 import envelopeHandler from "./envelope.ts";
 import pandocHandler from "./pandoc.ts";
@@ -62,6 +63,7 @@ import terrariaWldHandler from "./terrariawld.ts";
 
 const handlers: FormatHandler[] = [];
 try { handlers.push(new svgTraceHandler()) } catch (_) { };
+try { handlers.push(new imageToMeshHandler()) } catch (_) { };
 try { handlers.push(new canvasToBlobHandler()) } catch (_) { };
 try { handlers.push(new meydaHandler()) } catch (_) { };
 try { handlers.push(new htmlEmbedHandler()) } catch (_) { };

@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
+    "types": ["node"],
+    "strict": true,
+    "skipLibCheck": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": false,
+    "outDir": "dist-node",
+    "rootDir": "src"
+  },
+  "include": [
+    "src/convert/three_d/**/*",
+    "src/shims.d.ts"
+  ]
+}
