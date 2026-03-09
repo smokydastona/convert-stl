@@ -43,12 +43,16 @@ jobs:
             ~/.bun/install/cache
             ~/.cache/puppeteer
             node_modules
-          key: ${{ runner.os }}-bun-${{ hashFiles('package-lock.json', 'package.json') }}
+          key: ${{ runner.os }}-bun-${{ hashFiles('package.json', 'bun.lockb', 'bun.lock', 'package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-bun-
 
       - name: Install dependencies
         run: bun install
+
+      - name: Install Puppeteer Chrome (cached)
+        if: matrix.platform == 'linux'
+        run: bunx puppeteer browsers install chrome
 
       # Test (Linux only)
       - name: Build (for testing)
