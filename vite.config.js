@@ -9,7 +9,7 @@ export default defineConfig({
       "@sqlite.org/sqlite-wasm",
     ]
   },
-  base: "/convert/",
+  base: process.env.VITE_BASE ?? "/",
   plugins: [
     viteStaticCopy({
       targets: [
