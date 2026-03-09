@@ -11,7 +11,7 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 COPY .npmrc ./
 COPY package.json ./
-RUN bun install --frozen-lockfile
+RUN bun install
 
 COPY . .
 

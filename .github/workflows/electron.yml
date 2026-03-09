@@ -25,7 +25,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
@@ -36,7 +36,7 @@ jobs:
           cache: true
 
       - name: Install dependencies
-        run: bun i --frozen-lockfile
+        run: bun install
 
       # Test (Linux only)
       - name: Build (for testing)
