@@ -18,7 +18,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      PUPPETEER_SKIP_DOWNLOAD: "true"
+      # Cache location for Puppeteer's downloaded browsers
+      PUPPETEER_CACHE_DIR: ~/.cache/puppeteer
 
     steps:
       - name: Checkout
@@ -36,6 +37,7 @@ jobs:
         with:
           path: |
             ~/.bun/install/cache
+            ~/.cache/puppeteer
             node_modules
           key: ${{ runner.os }}-bun-${{ hashFiles('package-lock.json', 'package.json') }}
           restore-keys: |
