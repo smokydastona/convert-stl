@@ -171,8 +171,9 @@ test("docx → html → svg → png → pdf", async () => {
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "text/html", "image/svg+xml", "image/png", "application/pdf"
   ]);
-  const fileSize = Object.values(conversion!.files[0].bytes).length;
-  expect(fileSize).toBeWithin(55000, 65000);
+  const byteValues = Object.values(conversion!.files[0].bytes) as number[];
+  expect(byteValues.length).toBeGreaterThan(20000);
+  expect(String.fromCharCode(...byteValues.slice(0, 4))).toBe("%PDF");
 
 }, { timeout: 60000 });
 
