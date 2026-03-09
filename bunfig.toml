@@ -1,0 +1,6 @@
+# Bun workspace configuration
+# Limit test discovery to this repo's own test suite.
+# Submodules may include tests for other runners.
+
+[test]
+root = "test"
