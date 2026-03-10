@@ -47,7 +47,7 @@ class FFmpegHandler implements FormatHandler {
   async loadFFmpeg () {
     if (!this.#ffmpeg) return;
     return await this.#ffmpeg.load({
-      coreURL: "/convert/wasm/ffmpeg-core.js"
+      coreURL: new URL(`${import.meta.env.BASE_URL}wasm/ffmpeg-core.js`, globalThis.location.href).toString()
     });
   }
   terminateFFmpeg () {

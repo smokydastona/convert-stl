@@ -43,7 +43,7 @@ function loadFluidSynth(): Promise<{ JSSynth: any; sfontBin: ArrayBuffer }> {
         onRuntimeInitialized(this: unknown) { fluidModuleResolve(this); }
       };
 
-      let fluidSrc = await fetch("/convert/wasm/libfluidsynth-2.4.6.js").then(r => r.text());
+      let fluidSrc = await fetch(new URL(`${import.meta.env.BASE_URL}wasm/libfluidsynth-2.4.6.js`, globalThis.location.href)).then(r => r.text());
       // In an ES module, "var Module" is hoisted to "undefined", shadowing globalThis.Module.
       // Patch the Emscripten init line so it reads from globalThis explicitly.
       fluidSrc = fluidSrc.replace(
@@ -56,13 +56,13 @@ function loadFluidSynth(): Promise<{ JSSynth: any; sfontBin: ArrayBuffer }> {
       URL.revokeObjectURL(blobUrl);
       const fluidModule = await fluidModuleReady;
 
-      await loadScript("/convert/wasm/js-synthesizer.js");
+      await loadScript(new URL(`${import.meta.env.BASE_URL}wasm/js-synthesizer.js`, globalThis.location.href).toString());
 
       const JSSynth = (globalThis as any).JSSynth;
       JSSynth.Synthesizer.initializeWithFluidSynthModule(fluidModule);
       await JSSynth.Synthesizer.waitForWasmInitialized();
 
-      const sfontBin = await fetch("/convert/wasm/TimGM6mb.sf2").then(r => r.arrayBuffer());
+      const sfontBin = await fetch(new URL(`${import.meta.env.BASE_URL}wasm/TimGM6mb.sf2`, globalThis.location.href)).then(r => r.arrayBuffer());
       return { JSSynth, sfontBin };
     })();
   }

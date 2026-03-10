@@ -10,7 +10,7 @@ let ready = false;
 
 async function init() {
   try {
-    await initReflo('/convert/wasm/reflo_bg.wasm');
+    await initReflo(new URL(`${import.meta.env.BASE_URL}wasm/reflo_bg.wasm`, globalThis.location.href).toString());
     ready = true;
     // signal ready
     (self as any).postMessage({ id: 0, type: 'ready' });

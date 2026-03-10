@@ -3,6 +3,9 @@ import normalizeMimeType from "./normalizeMimeType.js";
 import handlers from "./handlers";
 import { TraversionGraph } from "./TraversionGraph.js";
 
+// Expose the Vite base path for legacy scripts that can't access import.meta.env.
+(globalThis as any).__CONVERT_BASE__ = import.meta.env.BASE_URL;
+
 /** Files currently selected for conversion */
 let selectedFiles: File[] = [];
 /**
