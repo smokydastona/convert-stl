@@ -528,6 +528,27 @@ function downloadFile (bytes: Uint8Array, name: string) {
   link.click();
 }
 
+async function readInputFileArrayBuffer(file: File): Promise<ArrayBuffer> {
+  // Primary path
+  try {
+    return await file.arrayBuffer();
+  } catch (e) {
+    // Fallback path: some environments intermittently fail on File.arrayBuffer()
+    // (commonly surfacing as NotReadableError). FileReader is often more resilient.
+    return await new Promise<ArrayBuffer>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(reader.error ?? e);
+      reader.onload = () => {
+        const result = reader.result;
+        if (result instanceof ArrayBuffer) return resolve(result);
+        // FileReader may return DataURL/string depending on API usage; guard anyway.
+        reject(new Error("FileReader returned unexpected result"));
+      };
+      reader.readAsArrayBuffer(file);
+    });
+  }
+}
+
 ui.convertButton.onclick = async function () {
 
   const inputFiles = selectedFiles;
@@ -554,7 +575,7 @@ ui.convertButton.onclick = async function () {
     for (const inputFile of inputFiles) {
       let inputBuffer: ArrayBuffer;
       try {
-        inputBuffer = await inputFile.arrayBuffer();
+        inputBuffer = await readInputFileArrayBuffer(inputFile);
       } catch (e: any) {
         const name = inputFile?.name ?? "(unknown)";
         const errName = (e && typeof e === "object" && "name" in e) ? String((e as any).name) : "";
