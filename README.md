@@ -29,6 +29,11 @@ To enable Pages:
 5. Click **Convert**!
 6. Hopefully, after a bit (or a lot) of thinking, the program will spit out the file you wanted. If not, see the "Issues" section below.
 
+Notable conversions in this fork include mesh voxelization outputs:
+
+- Mesh (OBJ/STL/PLY/GLB) → Sponge schematic (`.schem`)
+- Mesh (OBJ/STL/PLY/GLB) → sparse voxel grid JSON (`application/vnd.voxel+json`)
+
 ## Issues
 
 Ever since the YouTube video released, we've been getting spammed with issues suggesting the addition of all kinds of niche file formats. To keep things organized, I've decided to specify what counts as a valid issue and what doesn't.
@@ -65,18 +70,23 @@ Your Pages URL will be:
 
 > Note: the workflow sets `VITE_BASE=/<repo-name>/` so assets resolve correctly on Pages.
 
-### Local development (Bun + Vite)
+### Local development (Bun recommended)
 
 1. Clone this repository ***WITH SUBMODULES*** (some handlers are vendored as submodules). Omitting submodules will leave you missing dependencies.
-2. Install [Bun](https://bun.sh/).
-3. Run `bun install` to install dependencies.
-4. Run `bunx vite` to start the development server.
+2. Install dependencies:
+  - Bun: install [Bun](https://bun.sh/) then run `bun install`
+  - Node: run `npm install`
+3. Start the dev server:
+  - Bun: `bunx vite`
+  - Node: `npm run dev`
 
 _The following steps are optional, but recommended for performance:_
 
 When you first open the page, it'll take a while to generate the list of supported formats for each tool. If you open the console, you'll see it complaining a bunch about missing caches.
 
-After this is done (indicated by a `Built initial format list` message in the console), use `printSupportedFormatCache()` to get a JSON string with the cache data. Save it to `public/cache.json` (or `dist/cache.json` for a one-off build) to skip that loading screen on startup.
+This repo includes a default `public/cache.json` so the app doesn't spam a 404 / missing-cache warning. It starts empty, so the first load may still need to compute handler formats.
+
+After the first load (indicated by a `Built initial format list` message in the console), use `printSupportedFormatCache()` to get a JSON string with the cache data. Save it to `public/cache.json` (or `dist/cache.json` for a one-off build) to skip that loading screen on startup.
 
 If you want to generate the cache file automatically (the same way CI does), run:
 
@@ -87,6 +97,11 @@ bun run cache:build
 ```
 
 `cache:build` runs [buildCache.js](buildCache.js), which uses Puppeteer and requires a Chrome binary to be available. GitHub Actions handles this automatically.
+
+### Tests
+
+- Fast local smoke test (Node + Puppeteer): `npm run test:node`
+- Full test suite (Bun): `bun test`
 
 ### Docker (prebuilt image)
 
