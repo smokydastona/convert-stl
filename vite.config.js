@@ -56,6 +56,14 @@ export default defineConfig({
         {
           src: "src/handlers/espeakng.js/js/espeakng.worker.data",
           dest: "js"
+        },
+        {
+          src: "node_modules/libarchive.js/dist/worker-bundle.js",
+          dest: "wasm/libarchive"
+        },
+        {
+          src: "node_modules/libarchive.js/dist/libarchive.wasm",
+          dest: "wasm/libarchive"
         }
       ]
     }),

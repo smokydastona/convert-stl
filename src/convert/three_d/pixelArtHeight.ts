@@ -26,7 +26,7 @@ function rgbaKey(r: number, g: number, b: number, a: number): string {
 export function pixelArtHeightMeshFromRgba(
   width: number,
   height: number,
-  rgba: Uint8Array,
+  rgba: Uint8Array | Uint8ClampedArray,
   opts: PixelArtHeightOptions = {}
 ): THREE.Mesh {
   const pixelSize = opts.pixelSize ?? 1.0;
@@ -38,6 +38,8 @@ export function pixelArtHeightMeshFromRgba(
   if (width <= 0 || height <= 0) throw new Error("Invalid image size");
   if (rgba.length !== width * height * 4) throw new Error("Invalid RGBA buffer length");
 
+  const data = new Uint8Array(rgba.buffer, rgba.byteOffset, rgba.byteLength);
+
   // Build unique color list (scan order), excluding transparent pixels.
   const colorToIndex = new Map<string, number>();
   const colors: string[] = [];
@@ -45,10 +47,10 @@ export function pixelArtHeightMeshFromRgba(
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const idx = (y * width + x) * 4;
-      const r = rgba[idx];
-      const g = rgba[idx + 1];
-      const b = rgba[idx + 2];
-      const a = rgba[idx + 3];
+      const r = data[idx];
+      const g = data[idx + 1];
+      const b = data[idx + 2];
+      const a = data[idx + 3];
       if (ignoreTransparent && a === 0) continue;
       const key = rgbaKey(r, g, b, a);
       if (!colorToIndex.has(key)) {
@@ -66,10 +68,10 @@ export function pixelArtHeightMeshFromRgba(
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const idx = (y * width + x) * 4;
-      const r = rgba[idx];
-      const g = rgba[idx + 1];
-      const b = rgba[idx + 2];
-      const a = rgba[idx + 3];
+      const r = data[idx];
+      const g = data[idx + 1];
+      const b = data[idx + 2];
+      const a = data[idx + 3];
       if (ignoreTransparent && a === 0) continue;
 
       solidCount++;

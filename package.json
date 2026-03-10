@@ -77,10 +77,12 @@
     "@types/pako": "^2.0.4",
     "@types/papaparse": "^5.5.2",
     "@types/three": "^0.182.0",
+    "ag-psd": "^30.1.0",
     "bson": "^7.2.0",
     "imagetracer": "^0.2.2",
     "js-synthesizer": "^1.11.0",
     "jszip": "^3.10.1",
+    "libarchive.js": "^2.0.2",
     "meyda": "^5.6.3",
     "mime": "^4.1.0",
     "nanotar": "^0.3.0",
@@ -95,7 +97,7 @@
     "svg-pathdata": "^8.0.0",
     "three": "^0.182.0",
     "three-bvh-csg": "^0.0.17",
-    "three-mesh-bvh": "^0.9.8",
+    "three-mesh-bvh": "^0.9.9",
     "ts-flp": "^1.0.3",
     "verovio": "^6.0.1",
     "vexflow": "^5.0.0",
@@ -104,5 +106,8 @@
     "wavefile": "^11.0.0",
     "woff2-encoder": "^2.0.0",
     "yaml": "^2.8.2"
+  },
+  "overrides": {
+    "three-mesh-bvh": "^0.9.9"
   }
 }

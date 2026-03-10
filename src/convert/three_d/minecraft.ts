@@ -1,11 +1,11 @@
 import fs from "node:fs";
 
 import * as THREE from "three";
-import voxelizer from "voxelizer";
+import * as voxelizer from "voxelizer";
 import * as NBT from "nbtify";
 import { gzipSync } from "fflate";
 
-const { Sampler, ArrayExporter } = voxelizer;
+const { Sampler, ArrayExporter } = voxelizer as any;
 
 export type VoxelVolume = {
   size: { x: number; y: number; z: number };

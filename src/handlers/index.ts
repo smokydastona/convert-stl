@@ -61,6 +61,8 @@ import otaHandler from "./ota.ts";
 import comicsHandler from "./comics.ts";
 import terrariaWldHandler from "./terrariawld.ts";
 import pixelArt3dHandler from "./pixelArt3d.ts";
+import psdHandler from "./psd.ts";
+import libarchiveHandler from "./libarchive.ts";
 
 const handlers: FormatHandler[] = [];
 try { handlers.push(new svgTraceHandler()) } catch (_) { };
@@ -127,5 +129,7 @@ try { handlers.push(new otaHandler()) } catch (_) { };
 try { handlers.push(new comicsHandler()) } catch (_) { };
 try { handlers.push(new terrariaWldHandler()) } catch (_) { };
 try { handlers.push(new pixelArt3dHandler()) } catch (_) { };
+try { handlers.push(new psdHandler()) } catch (_) { };
+try { handlers.push(new libarchiveHandler()) } catch (_) { };
 
 export default handlers;
