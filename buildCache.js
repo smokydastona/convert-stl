@@ -124,11 +124,14 @@ try {
   console.log(`[${ts()}] navigating`, { targetUrl });
   await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: timeoutMs });
 
-  console.log(`[${ts()}] waiting for printSupportedFormatCache()`);
+  console.log(`[${ts()}] waiting for app readiness`);
 
-  // Prefer a deterministic readiness check.
+  // Wait until the app finished building its format list / graph.
+  // This ensures cache.json includes ALL handler formats, not just the first few.
   await page.waitForFunction(
-    () => typeof window.printSupportedFormatCache === "function",
+    () => typeof window.printSupportedFormatCache === "function"
+      && typeof window.traversionGraph?.getData === "function"
+      && window.traversionGraph.getData().nodes.length > 0,
     { timeout: timeoutMs }
   );
 

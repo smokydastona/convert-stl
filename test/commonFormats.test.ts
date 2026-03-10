@@ -3,6 +3,14 @@ import puppeteer from "puppeteer";
 import type { FileData, FormatHandler, FileFormat, ConvertPathNode } from "../src/FormatHandler.js";
 import CommonFormats from "../src/CommonFormats.js";
 
+function normalizeBase(base?: string) {
+  const raw = (base ?? "/convert/").trim() || "/convert/";
+  const withLeadingSlash = raw.startsWith("/") ? raw : `/${raw}`;
+  return withLeadingSlash.endsWith("/") ? withLeadingSlash : `${withLeadingSlash}/`;
+}
+
+const basePath = normalizeBase(process.env.VITE_BASE);
+
 declare global {
   interface Window {
     queryFormatNode: (testFunction: (value: ConvertPathNode) => boolean) => ConvertPathNode | undefined;
@@ -16,10 +24,39 @@ declare global {
 // Set up a basic webserver to host the distribution build
 const server = Bun.serve({
   async fetch (req) {
-    let path = new URL(req.url).pathname.replace("/convert/", "") || "index.html";
-    path = path.replaceAll("..", "");
-    if (path.startsWith("/test/")) path = "../test/resources/" + path.slice(6);
-    const file = Bun.file(`${__dirname}/../dist/${path}`);
+    const url = new URL(req.url);
+    const urlPath = url.pathname;
+
+    // Redirect root -> basePath for non-root deployments.
+    if (basePath !== "/" && (urlPath === "/" || urlPath === "")) {
+      return Response.redirect(`${url.origin}${basePath}`, 302);
+    }
+
+    // Serve index for the base path itself.
+    if (urlPath === basePath || urlPath === basePath.slice(0, -1)) {
+      const indexFile = Bun.file(`${__dirname}/../dist/index.html`);
+      if (!(await indexFile.exists())) return new Response("Not Found", { status: 404 });
+      return new Response(indexFile, { headers: { "content-type": "text/html; charset=utf-8" } });
+    }
+
+    // Map /<base>/... -> dist/...
+    let relativePath = urlPath;
+    if (relativePath.startsWith(basePath)) {
+      relativePath = relativePath.slice(basePath.length);
+    } else {
+      relativePath = relativePath.replace(/^\/+/, "");
+    }
+
+    relativePath = relativePath.replaceAll("..", "");
+
+    if (relativePath.startsWith("test/")) {
+      // allow fixtures to be fetched from /test/<name>
+      relativePath = "../test/resources/" + relativePath.slice(5);
+    }
+
+    if (!relativePath) relativePath = "index.html";
+
+    const file = Bun.file(`${__dirname}/../dist/${relativePath}`);
     if (!(await file.exists())) return new Response("Not Found", { status: 404 });
     return new Response(file);
   },
@@ -33,15 +70,20 @@ const browser = await puppeteer.launch({
 });
 const page = await browser.newPage();
 
-await Promise.all([
-  new Promise(resolve => {
-    page.on("console", msg => {
-      const text = msg.text();
-      if (text === "Built initial format list.") resolve(null);
-    });
-  }),
-  page.goto("http://localhost:8080/convert/index.html")
-]);
+page.on("console", (msg) => {
+  // Keep output; this test suite depends on the app booting.
+  console.log(`[browser:${msg.type()}] ${msg.text()}`);
+});
+
+await page.goto(`http://localhost:8080${basePath}index.html`, { waitUntil: "domcontentloaded" });
+
+// Deterministic readiness signal: these globals must exist for the tests.
+await page.waitForFunction(
+  () => typeof window.tryConvertByTraversing === "function"
+    && typeof window.traversionGraph?.getData === "function"
+    && window.traversionGraph.getData().nodes.length > 0,
+  { timeout: 180000 }
+);
 
 console.log("Setup finished.");
 
