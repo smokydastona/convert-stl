@@ -5,9 +5,14 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 import { STLLoader } from "three/addons/loaders/STLLoader.js";
+import { PLYLoader } from "three/addons/loaders/PLYLoader.js";
+import { ColladaLoader } from "three/addons/loaders/ColladaLoader.js";
+import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
+import { ThreeMFLoader } from "three/addons/loaders/3MFLoader.js";
 import { STLExporter } from "three/addons/exporters/STLExporter.js";
 import { OBJExporter } from "three/addons/exporters/OBJExporter.js";
 import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
+import { PLYExporter } from "three/addons/exporters/PLYExporter.js";
 import { mergeGeometries, mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
 import type { GLTF } from "three/addons/loaders/GLTFLoader.js";
 
@@ -121,6 +126,46 @@ class threejsHandler implements FormatHandler {
       category: "model",
     },
     {
+      name: "Polygon File Format",
+      format: "ply",
+      extension: "ply",
+      mime: "model/ply",
+      from: true,
+      to: true,
+      internal: "ply",
+      category: "model",
+    },
+    {
+      name: "COLLADA",
+      format: "dae",
+      extension: "dae",
+      mime: "model/vnd.collada+xml",
+      from: true,
+      to: false,
+      internal: "dae",
+      category: "model",
+    },
+    {
+      name: "Autodesk FBX",
+      format: "fbx",
+      extension: "fbx",
+      mime: "model/fbx",
+      from: true,
+      to: false,
+      internal: "fbx",
+      category: "model",
+    },
+    {
+      name: "3D Manufacturing Format",
+      format: "3mf",
+      extension: "3mf",
+      mime: "model/3mf",
+      from: true,
+      to: false,
+      internal: "3mf",
+      category: "model",
+    },
+    {
       name: "Blockbench Model JSON",
       format: "blockbench",
       extension: "json",
@@ -187,6 +232,40 @@ class threejsHandler implements FormatHandler {
             object.add(mesh);
             break;
           }
+          case "ply": {
+            const geometry = await new Promise<THREE.BufferGeometry>((resolve, reject) => {
+              const loader = new PLYLoader();
+              loader.load(url, resolve, undefined, reject);
+            });
+            geometry.computeVertexNormals();
+            const material = new THREE.MeshNormalMaterial();
+            const mesh = new THREE.Mesh(geometry, material);
+            object = new THREE.Group();
+            object.add(mesh);
+            break;
+          }
+          case "dae": {
+            const collada = await new Promise<any>((resolve, reject) => {
+              const loader = new ColladaLoader();
+              loader.load(url, resolve, undefined, reject);
+            });
+            object = collada.scene;
+            break;
+          }
+          case "fbx": {
+            object = await new Promise((resolve, reject) => {
+              const loader = new FBXLoader();
+              loader.load(url, resolve, undefined, reject);
+            });
+            break;
+          }
+          case "3mf": {
+            object = await new Promise((resolve, reject) => {
+              const loader = new ThreeMFLoader();
+              loader.load(url, resolve, undefined, reject);
+            });
+            break;
+          }
           default:
             throw new Error("Invalid input format");
         }
@@ -238,6 +317,23 @@ class threejsHandler implements FormatHandler {
         });
         const name = inputFile.name.split(".")[0] + "." + outputFormat.extension;
         outputFiles.push({ bytes: new Uint8Array(glb), name });
+        continue;
+      }
+
+      if (outputFormat.internal === "ply") {
+        const exporter = new PLYExporter();
+        const ply = await new Promise<string | ArrayBuffer | null>((resolve) => {
+          exporter.parse(object, resolve, { binary: true });
+        });
+        if (ply === null) throw new Error("PLY export failed");
+        const bytes = (() => {
+          if (typeof ply === "string") return new TextEncoder().encode(ply);
+          if (ply instanceof ArrayBuffer) return new Uint8Array(ply);
+          const view = ply as unknown as ArrayBufferView;
+          return new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
+        })();
+        const name = inputFile.name.split(".")[0] + "." + outputFormat.extension;
+        outputFiles.push({ bytes, name });
         continue;
       }
 

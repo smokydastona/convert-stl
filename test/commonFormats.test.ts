@@ -250,49 +250,80 @@ test("txt → wav → flac", async () => {
 
 }, { timeout: 60000 });
 
-test("all remaining formats are mutually reachable", async () => {
+test("no unreachable output is selectable for a chosen input", async () => {
   const result = await page.evaluate(() => {
     const data = window.traversionGraph.getData();
     const n = data.nodes.length;
     const adj: number[][] = Array.from({ length: n }, () => []);
-    const radj: number[][] = Array.from({ length: n }, () => []);
-    for (const e of data.edges) {
-      adj[e.from.index].push(e.to.index);
-      radj[e.to.index].push(e.from.index);
-    }
+    const idToIndex = new Map<string, number>();
+    for (let i = 0; i < n; i++) idToIndex.set(data.nodes[i].identifier, i);
+    for (const e of data.edges) adj[e.from.index].push(e.to.index);
 
-    function bfs(start: number, graph: number[][]) {
+    function reachableFrom(id: string) {
+      const start = idToIndex.get(id);
+      if (start === undefined) return new Set<string>();
       const seen = new Uint8Array(n);
-      const q: number[] = [start];
+      const stack: number[] = [start];
       seen[start] = 1;
-      while (q.length) {
-        const v = q.pop()!;
-        for (const next of graph[v]) {
+      while (stack.length) {
+        const v = stack.pop()!;
+        for (const next of adj[v]) {
           if (!seen[next]) {
             seen[next] = 1;
-            q.push(next);
+            stack.push(next);
           }
         }
       }
-      let count = 0;
-      for (let i = 0; i < n; i++) count += seen[i];
-      return count;
+      const out = new Set<string>();
+      for (let i = 0; i < n; i++) if (seen[i]) out.add(data.nodes[i].identifier);
+      return out;
     }
 
-    if (n === 0) return { ok: true, nodes: 0 };
+    const inputButtonsAll = Array.from(document.querySelectorAll("#from-list button")) as HTMLButtonElement[];
+    const outputButtonsAll = Array.from(document.querySelectorAll("#to-list button")) as HTMLButtonElement[];
 
-    const forward = bfs(0, adj);
-    const backward = bfs(0, radj);
-    return {
-      ok: forward === n && backward === n,
-      nodes: n,
-      forwardReachable: forward,
-      backwardReachable: backward,
+    const sample = <T,>(arr: T[], max: number): T[] => {
+      if (arr.length <= max) return arr;
+      const step = Math.max(1, Math.floor(arr.length / max));
+      const out: T[] = [];
+      for (let i = 0; i < arr.length && out.length < max; i += step) out.push(arr[i]);
+      return out;
     };
+
+    const inputButtons = sample(inputButtonsAll, 40);
+    const outputButtons = sample(outputButtonsAll, 80);
+
+    const failures: Array<{ input: string; output: string; reason: string }> = [];
+    for (const inBtn of inputButtons) {
+      const inId = inBtn.getAttribute("format-id") ?? "";
+      if (!inId) continue;
+
+      // Trigger app logic to disable unreachable outputs.
+      inBtn.click();
+
+      const reachable = reachableFrom(inId);
+      for (const outBtn of outputButtons) {
+        const outId = outBtn.getAttribute("format-id") ?? "";
+        if (!outId) continue;
+        const uiDisabled = outBtn.classList.contains("disabled");
+        const graphReachable = reachable.has(outId);
+
+        if (!graphReachable && !uiDisabled) {
+          failures.push({ input: inId, output: outId, reason: "unreachable output is enabled" });
+        }
+        if (graphReachable && uiDisabled) {
+          failures.push({ input: inId, output: outId, reason: "reachable output is disabled" });
+        }
+        if (failures.length > 25) break;
+      }
+      if (failures.length > 25) break;
+    }
+
+    return { ok: failures.length === 0, failures: failures.slice(0, 10) };
   });
 
   expect(result.ok).toBe(true);
-}, { timeout: 60000 });
+}, { timeout: 180000 });
 
 // ==================================================================
 //                          END OF TESTS

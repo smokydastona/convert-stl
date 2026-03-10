@@ -102,6 +102,61 @@ class libarchiveHandler implements FormatHandler {
         category: "archive",
         lossless: true,
       },
+      {
+        name: "GZip Compressed",
+        format: "gz",
+        extension: "gz",
+        mime: "application/gzip",
+        from: true,
+        to: false,
+        internal: "gz",
+        category: "archive",
+        lossless: true,
+      },
+      {
+        name: "XZ Compressed",
+        format: "xz",
+        extension: "xz",
+        mime: "application/x-xz",
+        from: true,
+        to: false,
+        internal: "xz",
+        category: "archive",
+        lossless: true,
+      },
+      {
+        name: "Zstandard Compressed",
+        format: "zst",
+        extension: "zst",
+        mime: "application/zstd",
+        from: true,
+        to: false,
+        internal: "zst",
+        category: "archive",
+        lossless: true,
+      },
+      {
+        name: "Microsoft Cabinet",
+        format: "cab",
+        extension: "cab",
+        mime: "application/vnd.ms-cab-compressed",
+        from: true,
+        to: false,
+        internal: "cab",
+        category: "archive",
+        lossless: true,
+      },
+      {
+        name: "ISO 9660 Disk Image",
+        format: "iso",
+        extension: "iso",
+        mime: "application/x-iso9660-image",
+        from: true,
+        to: false,
+        internal: "iso",
+        category: "archive",
+        lossless: true,
+      },
       CommonFormats.ZIP.builder("zip").allowTo().markLossless(),
       CommonFormats.JSON.builder("json").allowTo(),
     ];
@@ -113,7 +168,7 @@ class libarchiveHandler implements FormatHandler {
     if (!this.ready) throw new Error("Handler not initialized");
     if (!this.supportedFormats?.some((f) => f.internal === outputFormat.internal)) throw new Error("Invalid output format");
 
-    if (inputFormat.internal !== "7z" && inputFormat.internal !== "rar") {
+    if (!["7z", "rar", "gz", "xz", "zst", "cab", "iso"].includes(inputFormat.internal)) {
       throw new Error("Invalid input format");
     }
 

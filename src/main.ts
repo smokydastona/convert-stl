@@ -208,82 +208,59 @@ window.printSupportedFormatCache = () => {
 
 async function buildOptionList () {
 
-  function getLargestSccIdentifiers(graphData: { nodes: { identifier: string; edges: number[] }[]; edges: { from: { index: number }; to: { index: number } }[] }) {
-    const nodeCount = graphData.nodes.length;
+  function buildGraphReachability() {
+    const data = window.traversionGraph.getData();
+    const nodeCount = data.nodes.length;
     const adj: number[][] = Array.from({ length: nodeCount }, () => []);
     const radj: number[][] = Array.from({ length: nodeCount }, () => []);
+    const idToIndex = new Map<string, number>();
+    const indexToId: string[] = new Array(nodeCount);
 
-    for (const e of graphData.edges) {
+    for (let i = 0; i < nodeCount; i++) {
+      idToIndex.set(data.nodes[i].identifier, i);
+      indexToId[i] = data.nodes[i].identifier;
+    }
+    for (const e of data.edges) {
       adj[e.from.index].push(e.to.index);
       radj[e.to.index].push(e.from.index);
     }
 
-    const visited = new Uint8Array(nodeCount);
-    const order: number[] = [];
+    const forwardCache = new Map<string, Set<string>>();
+    const backwardCache = new Map<string, Set<string>>();
 
-    for (let start = 0; start < nodeCount; start++) {
-      if (visited[start]) continue;
-
-      visited[start] = 1;
-      const stack: number[] = [start];
-      const iters: number[] = [0];
-
+    function reachableIds(startId: string, graph: number[][], cache: Map<string, Set<string>>): Set<string> {
+      const cached = cache.get(startId);
+      if (cached) return cached;
+      const startIndex = idToIndex.get(startId);
+      if (startIndex === undefined) {
+        const empty = new Set<string>();
+        cache.set(startId, empty);
+        return empty;
+      }
+      const seen = new Uint8Array(nodeCount);
+      const stack: number[] = [startIndex];
+      seen[startIndex] = 1;
       while (stack.length) {
-        const v = stack[stack.length - 1];
-        const i = iters[iters.length - 1];
-        if (i < adj[v].length) {
-          const next = adj[v][i];
-          iters[iters.length - 1] = i + 1;
-          if (!visited[next]) {
-            visited[next] = 1;
+        const v = stack.pop()!;
+        for (const next of graph[v]) {
+          if (!seen[next]) {
+            seen[next] = 1;
             stack.push(next);
-            iters.push(0);
-          }
-        } else {
-          stack.pop();
-          iters.pop();
-          order.push(v);
-        }
-      }
-    }
-
-    const comp = new Int32Array(nodeCount);
-    comp.fill(-1);
-    const compSizes: number[] = [];
-    let compId = 0;
-
-    for (let k = order.length - 1; k >= 0; k--) {
-      const start = order[k];
-      if (comp[start] !== -1) continue;
-      let size = 0;
-      const queue: number[] = [start];
-      comp[start] = compId;
-      while (queue.length) {
-        const v = queue.pop()!;
-        size++;
-        for (const next of radj[v]) {
-          if (comp[next] === -1) {
-            comp[next] = compId;
-            queue.push(next);
           }
         }
       }
-      compSizes.push(size);
-      compId++;
+      const out = new Set<string>();
+      for (let i = 0; i < nodeCount; i++) {
+        if (seen[i]) out.add(indexToId[i]);
+      }
+      cache.set(startId, out);
+      return out;
     }
 
-    if (nodeCount === 0) return new Set<string>();
-
-    let largest = 0;
-    for (let i = 1; i < compSizes.length; i++) {
-      if (compSizes[i] > compSizes[largest]) largest = i;
-    }
-
-    const identifiers = new Set<string>();
-    for (let i = 0; i < nodeCount; i++) {
-      if (comp[i] === largest) identifiers.add(graphData.nodes[i].identifier);
-    }
-    return identifiers;
+    return {
+      forward: (fromId: string) => reachableIds(fromId, adj, forwardCache),
+      backward: (toId: string) => reachableIds(toId, radj, backwardCache),
+    };
   }
 
   allOptions.length = 0;
@@ -301,37 +278,54 @@ async function buildOptionList () {
         console.info(`Updated supported format cache for "${handler.name}".`);
       }
     }
+  }
+
+  window.traversionGraph.init(window.supportedFormatCache, handlers);
+  const reachability = buildGraphReachability();
+
+  const updateReachabilityUi = () => {
+    const selectedInput = ui.inputList.querySelector("button.selected") as HTMLButtonElement | null;
+    const selectedOutput = ui.outputList.querySelector("button.selected") as HTMLButtonElement | null;
+    const selectedInputId = selectedInput?.getAttribute("format-id") ?? null;
+    const selectedOutputId = selectedOutput?.getAttribute("format-id") ?? null;
+
+    const reachableOutputs = selectedInputId ? reachability.forward(selectedInputId) : null;
+    const reachableInputs = selectedOutputId ? reachability.backward(selectedOutputId) : null;
+
+    for (const btn of Array.from(ui.outputList.querySelectorAll("button"))) {
+      const id = btn.getAttribute("format-id") ?? "";
+      const disabled = !!(reachableOutputs && !reachableOutputs.has(id));
+      btn.classList.toggle("disabled", disabled);
+      if (disabled && btn.classList.contains("selected")) btn.classList.remove("selected");
+    }
+    for (const btn of Array.from(ui.inputList.querySelectorAll("button"))) {
+      const id = btn.getAttribute("format-id") ?? "";
+      const disabled = !!(reachableInputs && !reachableInputs.has(id));
+      btn.classList.toggle("disabled", disabled);
+      if (disabled && btn.classList.contains("selected")) btn.classList.remove("selected");
+    }
+
+    const allSelected = document.getElementsByClassName("selected");
+    if (allSelected.length === 2) ui.convertButton.className = "";
+    else ui.convertButton.className = "disabled";
+  };
+
+  const makeClickHandler = () => (event: Event) => {
+    if (!(event.target instanceof HTMLButtonElement)) return;
+    if (event.target.classList.contains("disabled")) return;
+    const targetParent = event.target.parentElement;
+    const previous = targetParent?.getElementsByClassName("selected")?.[0];
+    if (previous) previous.className = previous.className.replace("selected", "").trim();
+    event.target.classList.add("selected");
+    updateReachabilityUi();
+  };
+
+  for (const handler of handlers) {
     const supportedFormats = window.supportedFormatCache.get(handler.name);
     if (!supportedFormats) {
       console.warn(`Handler "${handler.name}" doesn't support any formats.`);
       continue;
     }
-    // Handled below after we enforce reachability.
-  }
-
-  // Enforce full reachability by pruning to the largest strongly connected component.
-  // This guarantees every remaining format can reach every other.
-  {
-    const tmpGraph = new TraversionGraph();
-    tmpGraph.init(window.supportedFormatCache, handlers);
-    const allowedIdentifiers = getLargestSccIdentifiers(tmpGraph.getData());
-    const total = tmpGraph.getData().nodes.length;
-    if (allowedIdentifiers.size !== total) {
-      console.warn(`Enforcing full reachability: keeping ${allowedIdentifiers.size}/${total} formats (largest strongly connected component).`);
-      const filtered = new Map<string, FileFormat[]>();
-      for (const [handlerName, formats] of window.supportedFormatCache) {
-        filtered.set(handlerName, formats.filter(f => allowedIdentifiers.has(f.mime + `(${f.format})`)));
-      }
-      window.supportedFormatCache = filtered;
-    }
-  }
-
-  // Build the final graph and UI options from the pruned cache.
-  window.traversionGraph.init(window.supportedFormatCache, handlers);
-
-  for (const handler of handlers) {
-    const supportedFormats = window.supportedFormatCache.get(handler.name);
-    if (!supportedFormats) continue;
 
     for (const format of supportedFormats) {
       if (!format.mime) continue;
@@ -355,6 +349,7 @@ async function buildOptionList () {
       const newOption = document.createElement("button");
       newOption.setAttribute("format-index", (allOptions.length - 1).toString());
       newOption.setAttribute("mime-type", format.mime);
+      newOption.setAttribute("format-id", `${format.mime}(${format.format})`);
 
       const formatDescriptor = format.format.toUpperCase();
       if (simpleMode) {
@@ -369,19 +364,7 @@ async function buildOptionList () {
         newOption.appendChild(document.createTextNode(`${formatDescriptor} - ${format.name} (${format.mime}) ${handler.name}`));
       }
 
-      const clickHandler = (event: Event) => {
-        if (!(event.target instanceof HTMLButtonElement)) return;
-        const targetParent = event.target.parentElement;
-        const previous = targetParent?.getElementsByClassName("selected")?.[0];
-        if (previous) previous.className = "";
-        event.target.className = "selected";
-        const allSelected = document.getElementsByClassName("selected");
-        if (allSelected.length === 2) {
-          ui.convertButton.className = "";
-        } else {
-          ui.convertButton.className = "disabled";
-        }
-      };
+      const clickHandler = makeClickHandler();
 
       if (format.from && addToInputs) {
         const clone = newOption.cloneNode(true) as HTMLButtonElement;
@@ -395,6 +378,9 @@ async function buildOptionList () {
       }
     }
   }
+
+  // Initial state: nothing selected, so nothing disabled.
+  updateReachabilityUi();
 
   filterButtonList(ui.inputList, ui.inputSearch.value);
   filterButtonList(ui.outputList, ui.outputSearch.value);
