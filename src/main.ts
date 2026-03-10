@@ -208,6 +208,84 @@ window.printSupportedFormatCache = () => {
 
 async function buildOptionList () {
 
+  function getLargestSccIdentifiers(graphData: { nodes: { identifier: string; edges: number[] }[]; edges: { from: { index: number }; to: { index: number } }[] }) {
+    const nodeCount = graphData.nodes.length;
+    const adj: number[][] = Array.from({ length: nodeCount }, () => []);
+    const radj: number[][] = Array.from({ length: nodeCount }, () => []);
+
+    for (const e of graphData.edges) {
+      adj[e.from.index].push(e.to.index);
+      radj[e.to.index].push(e.from.index);
+    }
+
+    const visited = new Uint8Array(nodeCount);
+    const order: number[] = [];
+
+    for (let start = 0; start < nodeCount; start++) {
+      if (visited[start]) continue;
+
+      visited[start] = 1;
+      const stack: number[] = [start];
+      const iters: number[] = [0];
+
+      while (stack.length) {
+        const v = stack[stack.length - 1];
+        const i = iters[iters.length - 1];
+        if (i < adj[v].length) {
+          const next = adj[v][i];
+          iters[iters.length - 1] = i + 1;
+          if (!visited[next]) {
+            visited[next] = 1;
+            stack.push(next);
+            iters.push(0);
+          }
+        } else {
+          stack.pop();
+          iters.pop();
+          order.push(v);
+        }
+      }
+    }
+
+    const comp = new Int32Array(nodeCount);
+    comp.fill(-1);
+    const compSizes: number[] = [];
+    let compId = 0;
+
+    for (let k = order.length - 1; k >= 0; k--) {
+      const start = order[k];
+      if (comp[start] !== -1) continue;
+      let size = 0;
+      const queue: number[] = [start];
+      comp[start] = compId;
+      while (queue.length) {
+        const v = queue.pop()!;
+        size++;
+        for (const next of radj[v]) {
+          if (comp[next] === -1) {
+            comp[next] = compId;
+            queue.push(next);
+          }
+        }
+      }
+      compSizes.push(size);
+      compId++;
+    }
+
+    if (nodeCount === 0) return new Set<string>();
+
+    let largest = 0;
+    for (let i = 1; i < compSizes.length; i++) {
+      if (compSizes[i] > compSizes[largest]) largest = i;
+    }
+
+    const identifiers = new Set<string>();
+    for (let i = 0; i < nodeCount; i++) {
+      if (comp[i] === largest) identifiers.add(graphData.nodes[i].identifier);
+    }
+    return identifiers;
+  }
+
   allOptions.length = 0;
   ui.inputList.innerHTML = "";
   ui.outputList.innerHTML = "";
@@ -228,8 +306,34 @@ async function buildOptionList () {
       console.warn(`Handler "${handler.name}" doesn't support any formats.`);
       continue;
     }
-    for (const format of supportedFormats) {
+    // Handled below after we enforce reachability.
+  }
 
+  // Enforce full reachability by pruning to the largest strongly connected component.
+  // This guarantees every remaining format can reach every other.
+  {
+    const tmpGraph = new TraversionGraph();
+    tmpGraph.init(window.supportedFormatCache, handlers);
+    const allowedIdentifiers = getLargestSccIdentifiers(tmpGraph.getData());
+    const total = tmpGraph.getData().nodes.length;
+    if (allowedIdentifiers.size !== total) {
+      console.warn(`Enforcing full reachability: keeping ${allowedIdentifiers.size}/${total} formats (largest strongly connected component).`);
+      const filtered = new Map<string, FileFormat[]>();
+      for (const [handlerName, formats] of window.supportedFormatCache) {
+        filtered.set(handlerName, formats.filter(f => allowedIdentifiers.has(f.mime + `(${f.format})`)));
+      }
+      window.supportedFormatCache = filtered;
+    }
+  }
+
+  // Build the final graph and UI options from the pruned cache.
+  window.traversionGraph.init(window.supportedFormatCache, handlers);
+
+  for (const handler of handlers) {
+    const supportedFormats = window.supportedFormatCache.get(handler.name);
+    if (!supportedFormats) continue;
+
+    for (const format of supportedFormats) {
       if (!format.mime) continue;
 
       allOptions.push({ format, handler });
@@ -289,10 +393,9 @@ async function buildOptionList () {
         clone.onclick = clickHandler;
         ui.outputList.appendChild(clone);
       }
-
     }
   }
-  window.traversionGraph.init(window.supportedFormatCache, handlers);
+
   filterButtonList(ui.inputList, ui.inputSearch.value);
   filterButtonList(ui.outputList, ui.outputSearch.value);
 

@@ -250,6 +250,50 @@ test("txt → wav → flac", async () => {
 
 }, { timeout: 60000 });
 
+test("all remaining formats are mutually reachable", async () => {
+  const result = await page.evaluate(() => {
+    const data = window.traversionGraph.getData();
+    const n = data.nodes.length;
+    const adj: number[][] = Array.from({ length: n }, () => []);
+    const radj: number[][] = Array.from({ length: n }, () => []);
+    for (const e of data.edges) {
+      adj[e.from.index].push(e.to.index);
+      radj[e.to.index].push(e.from.index);
+    }
+
+    function bfs(start: number, graph: number[][]) {
+      const seen = new Uint8Array(n);
+      const q: number[] = [start];
+      seen[start] = 1;
+      while (q.length) {
+        const v = q.pop()!;
+        for (const next of graph[v]) {
+          if (!seen[next]) {
+            seen[next] = 1;
+            q.push(next);
+          }
+        }
+      }
+      let count = 0;
+      for (let i = 0; i < n; i++) count += seen[i];
+      return count;
+    }
+
+    if (n === 0) return { ok: true, nodes: 0 };
+
+    const forward = bfs(0, adj);
+    const backward = bfs(0, radj);
+    return {
+      ok: forward === n && backward === n,
+      nodes: n,
+      forwardReachable: forward,
+      backwardReachable: backward,
+    };
+  });
+
+  expect(result.ok).toBe(true);
+}, { timeout: 60000 });
+
 // ==================================================================
 //                          END OF TESTS
 // ==================================================================
