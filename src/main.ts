@@ -482,6 +482,22 @@ async function attemptConvertPath (files: FileData[], path: ConvertPathNode[]) {
       console.log(path.map(c => c.format.format));
       console.error(handler.name, `${path[i].format.format} → ${path[i + 1].format.format}`, e);
 
+      // If the very first step fails due to a likely "bad input" (e.g. wrong format
+      // chosen / invalid JSON), continuing the route search can explode in cost and
+      // appear to hang. In that case, surface the underlying error immediately.
+      if (i === 0) {
+        const msg = (e && typeof e === "object" && "message" in e)
+          ? String((e as any).message)
+          : String(e);
+        const likelyInputMismatch = /^(Invalid JSON|Unsupported |Invalid file|Could not parse|Not a valid )/i.test(msg);
+        if (likelyInputMismatch) {
+          throw new Error(
+            `The selected file doesn't appear to be valid ${path[0].format.format} (${path[0].format.mime}).\n\n` +
+            `Details: ${msg}`
+          );
+        }
+      }
+
       // Dead ends are added both to the graph and to the attempt system.
       // The graph may still have old paths queued from before they were
       // marked as dead ends, so we catch that here.
@@ -610,7 +626,20 @@ ui.convertButton.onclick = async function () {
     const output = await window.tryConvertByTraversing(inputFileData, inputOption, outputOption);
     if (!output) {
       window.hidePopup();
-      alert("Failed to find conversion route.");
+      const graph = window.traversionGraph?.getData?.();
+      const nodes = graph?.nodes?.length ?? "unknown";
+      const edges = graph?.edges?.length ?? "unknown";
+      const cacheSize = window.supportedFormatCache?.size ?? "unknown";
+      const commit = import.meta.env.VITE_COMMIT_SHA ?? "unknown";
+      alert(
+        "Failed to find conversion route.\n\n" +
+        `From: ${inputOption.format.format} (${inputOption.format.mime})\n` +
+        `To: ${outputOption.format.format} (${outputOption.format.mime})\n\n` +
+        `Graph: ${nodes} nodes, ${edges} edges\n` +
+        `Format cache: ${cacheSize} entries\n` +
+        `Commit: ${commit}\n\n` +
+        "Tip: If this is a GitHub Pages build, hard-refresh (Ctrl+F5). If it still fails, open DevTools → Console to see the first handler error."
+      );
       return;
     }
 
