@@ -1,209 +1,94 @@
-# Convert (fork)
+# Convert (this fork)
+
+A “runs-locally-in-your-browser” file converter built on Vite + TypeScript.
+No uploads: files are processed on your machine in the browser UI (or packaged as a desktop app).
 
 This repository is a fork of the upstream project:
 
 - Upstream: https://github.com/p2r3/convert
 
-It keeps the same general goal: a browser-based file converter that runs locally in your browser (no file uploads required), with a large and growing set of format conversions.
+This fork focuses on shipping more conversions and keeping them regression-tested.
 
-## Live site
+## Highlights
 
-This fork can be published with GitHub Pages (via GitHub Actions). Once enabled, the URL will be:
+- Hundreds of format routes via a graph/pathfinder (the UI finds a conversion path automatically)
+- Extra 3D/voxel conversions:
+  - Mesh (OBJ/STL/PLY/GLB) → Sponge schematic (`.schem`)
+  - Mesh (OBJ/STL/PLY/GLB) → sparse voxel grid JSON (`application/vnd.voxel+json`)
+- DXF conversions (example routes covered by tests: DXF→SVG and PNG→DXF)
+- Optional format-cache file to speed up startup
 
-https://smokydastona.github.io/convert-stl/
+## Use it
 
-To enable Pages:
+1. Open the site (GitHub Pages) or run locally.
+2. Drag a file into the page.
+3. Pick an output format.
+4. Click **Convert**.
 
-1. In your GitHub repo, go to **Settings → Pages**.
-2. Under **Build and deployment**, set **Source** to **GitHub Actions**.
-3. Push to `main` or `master`, or run the **Publish to GitHub Pages** workflow manually.
+Tip: if you don’t see a format, try searching by extension or MIME.
 
-> Note: the workflow sets `VITE_BASE=/<repo-name>/` so assets resolve correctly on Pages.
+## Run locally
 
-## Usage
+> Important: clone with submodules (some handlers are vendored).
 
-1. Open the live site for this fork (see “Live site”), or run it locally (see “Deployment”).
-2. Click the big blue box to add your file (or just drag it on to the window).
-3. An input format should have been automatically selected. If it wasn't, yikes! Try searching for it, or if it's really not there, see the "Issues" section below.
-4. Select an output format from the second list. If you're on desktop, that's the one on the right side. If you're on mobile, it'll be somewhere lower down.
-5. Click **Convert**!
-6. Hopefully, after a bit (or a lot) of thinking, the program will spit out the file you wanted. If not, see the "Issues" section below.
+### Install
 
-Notable conversions in this fork include mesh voxelization outputs:
+Pick one:
 
-- Mesh (OBJ/STL/PLY/GLB) → Sponge schematic (`.schem`)
-- Mesh (OBJ/STL/PLY/GLB) → sparse voxel grid JSON (`application/vnd.voxel+json`)
+- Bun (recommended for full parity with CI):
+  - `bun install`
+- Node:
+  - `npm install`
 
-## Issues
+### Dev server
 
-Ever since the YouTube video released, we've been getting spammed with issues suggesting the addition of all kinds of niche file formats. To keep things organized, I've decided to specify what counts as a valid issue and what doesn't.
+- `npm run dev` (or `bunx vite`)
 
-> [!IMPORTANT]
-> **SIMPLY ASKING FOR A FILE FORMAT TO BE ADDED IS NOT A MEANINGFUL ISSUE!**
+### Build + preview
 
-There are thousands of file formats out there. It can take hours to add support for just one. The math is simple - we can't possibly support every single file. As such, simply listing your favorite file formats is not helpful. We already know that there are formats we don't support, we don't need tickets to tell us that.
+- `npm run build`
+- `npm run preview`
 
-When suggesting a file format, please _at minimum_:
-- Make sure that there isn't already an issue about the same thing, and that we don't already support the format.
-- Explain what you expect the conversion to be like (what medium is it converting to/from). It's important to note here that simply parsing the underlying data is _not sufficient_. Imagine if we only treated SVG images as raw XML data and didn't support converting them to raster images - that would defeat the point.
-- Provide links to existing browser-based solutions if possible, or at the very least a reference for implementing the format, and make sure the license is compatible with GPL-2.0.
+## Startup cache (optional)
 
-If this seems like a lot, please remember - a developer will have to do 100x more work to actually implement the format. Doing a bit of research not only saves them precious time, it also weeds out "unserious" proposals that would only bloat our to-do list.
+On first load, the app may spend time discovering each handler’s supported formats.
 
-**If you're submitting a bug report,** you only need to do step 1 - check if the problem isn't already reported by someone else. Bug reports are generally quite important otherwise.
+- This repo includes a default `public/cache.json` so the app doesn’t request a missing file.
+- To generate a populated cache:
+  1. Run a build: `bun run build`
+  2. Ensure a Chrome binary is available for Puppeteer (CI does this automatically)
+  3. Run: `bun run cache:build`
 
-Though please note, "converting X to Y doesn't work" is **not** a bug report.  However, "converting X to Y works but not how I expected" likely **is** a bug report.
+`cache:build` writes `dist/cache.json`. If you want that cache to ship by default, copy its contents into `public/cache.json`.
 
-## Deployment
+## Tests
 
-### Live site (GitHub Pages)
+- Fast local smoke (Node + Puppeteer): `npm run test:node`
+- Full suite (Bun): `bun test`
 
-This repository can be published as a live site using GitHub Pages (via GitHub Actions).
+## Deploy
 
-1. In your GitHub repo, go to **Settings → Pages**.
-2. Under **Build and deployment**, set **Source** to **GitHub Actions**.
-3. Push to `main` or `master`, or run the **Publish to GitHub Pages** workflow manually.
+### GitHub Pages
 
-Your Pages URL will be:
+The Pages workflow sets `VITE_BASE=/<repo-name>/` so assets resolve correctly.
 
-`https://<owner>.github.io/<repo-name>/`
+### Docker
 
-> Note: the workflow sets `VITE_BASE=/<repo-name>/` so assets resolve correctly on Pages.
+Compose file(s) live in the `docker/` directory.
 
-### Local development (Bun recommended)
+- Start (prebuilt image):
+  - `docker compose -f docker/docker-compose.yml up -d`
 
-1. Clone this repository ***WITH SUBMODULES*** (some handlers are vendored as submodules). Omitting submodules will leave you missing dependencies.
-2. Install dependencies:
-  - Bun: install [Bun](https://bun.sh/) then run `bun install`
-  - Node: run `npm install`
-3. Start the dev server:
-  - Bun: `bunx vite`
-  - Node: `npm run dev`
+This serves the app at `http://localhost:8080/convert/`.
 
-_The following steps are optional, but recommended for performance:_
+### Desktop (Electron)
 
-When you first open the page, it'll take a while to generate the list of supported formats for each tool. If you open the console, you'll see it complaining a bunch about missing caches.
+- Build + run: `bun run desktop:start`
+- Create installers:
+  - Windows: `bun run desktop:dist:win`
+  - macOS: `bun run desktop:dist:mac`
+  - Linux: `bun run desktop:dist:linux`
 
-This repo includes a default `public/cache.json` so the app doesn't spam a 404 / missing-cache warning. It starts empty, so the first load may still need to compute handler formats.
+## License
 
-After the first load (indicated by a `Built initial format list` message in the console), use `printSupportedFormatCache()` to get a JSON string with the cache data. Save it to `public/cache.json` (or `dist/cache.json` for a one-off build) to skip that loading screen on startup.
-
-If you want to generate the cache file automatically (the same way CI does), run:
-
-```bash
-bun run build
-bunx puppeteer browsers install chrome
-bun run cache:build
-```
-
-`cache:build` runs [buildCache.js](buildCache.js), which uses Puppeteer and requires a Chrome binary to be available. GitHub Actions handles this automatically.
-
-### Tests
-
-- Fast local smoke test (Node + Puppeteer): `npm run test:node`
-- Full test suite (Bun): `bun test`
-
-### Docker (prebuilt image)
-
-Docker compose files live in the `docker/` directory, so run compose with `-f` from the repository root:
-
-```bash
-docker compose -f docker/docker-compose.yml up -d
-```
-
-Alternatively download the `docker-compose.yml` separately and start it by executing `docker compose up -d` in the same directory.
-
-This runs the container on `http://localhost:8080/convert/`.
-
-### Docker (local build for development)
-
-Use the override file to build the image locally:
-
-```bash
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml up --build -d
-```
-
-The first Docker build is expected to be slow because Chromium and related system packages are installed in the build stage (needed for puppeteer in `buildCache.js`). Later builds are usually much faster due to Docker layer caching.
-
-## Contributing
-
-This fork tracks upstream but may include additional features and workflow changes. If you’re unsure whether something belongs upstream or here, open an issue in this fork first; we can decide whether to forward it.
-
-The best way to contribute is by adding support for new file formats (duh). Here's how that works:
-
-### Creating a handler
-
-Each "tool" used for conversion has to be normalized to a standard form - effectively a "wrapper" that abstracts away the internal processes. These wrappers are available in [src/handlers](src/handlers/).
-
-Below is a super barebones handler that does absolutely nothing. You can use this as a starting point for adding a new format:
-
-```ts
-// file: dummy.ts
-
-import type { FileData, FileFormat, FormatHandler } from "../FormatHandler.ts";
-import CommonFormats from "src/CommonFormats.ts";
-
-class dummyHandler implements FormatHandler {
-
-  public name: string = "dummy";
-  public supportedFormats?: FileFormat[];
-  public ready: boolean = false;
-
-  async init () {
-    this.supportedFormats = [
-      // Example PNG format, with both input and output disabled
-      CommonFormats.PNG.builder("png")
-        .markLossless()
-        .allowFrom(false)
-        .allowTo(false),
-
-      // Alternatively, if you need a custom format, define it like so:
-      {
-        name: "CompuServe Graphics Interchange Format (GIF)",
-        format: "gif",
-        extension: "gif",
-        mime: "image/gif",
-        from: false,
-        to: false,
-        internal: "gif",
-        category: ["image", "video"],
-        lossless: false
-      },
-    ];
-    this.ready = true;
-  }
-
-  async doConvert (
-    inputFiles: FileData[],
-    inputFormat: FileFormat,
-    outputFormat: FileFormat
-  ): Promise<FileData[]> {
-    const outputFiles: FileData[] = [];
-    return outputFiles;
-  }
-
-}
-
-export default dummyHandler;
-```
-
-For more details on how all of these components work, refer to the doc comments in [src/FormatHandler.ts](src/FormatHandler.ts). You can also take a look at existing handlers to get a more practical example.
-
-There are a few additional things that I want to point out in particular:
-
-- Pay attention to the naming system. If your tool is called `dummy`, then the class should be called `dummyHandler`, and the file should be called `dummy.ts`.
-- The handler is responsible for setting the output file's name. This is done to allow for flexibility in rare cases where the _full_ file name matters. Of course, in most cases, you'll only have to swap the file extension.
-- The handler is also responsible for ensuring that any byte buffers that enter or exit the handler _do not get mutated_. If necessary, clone the buffer by wrapping it in `new Uint8Array()`.
-- When handling MIME types, run them through [normalizeMimeType](src/normalizeMimeType.ts) first. One file can have multiple valid MIME types, which isn't great when you're trying to match them algorithmically.
-- When implementing a new file format, please treat the file as the media that it represents, not the data that it contains. For example, if you were making an SVG handler, you should treat the file as an _image_, not as XML.
-
-### Adding dependencies
-
-If your tool requires an external dependency (which it likely does), there are currently two well-established ways of going about this:
-
-- If it's an `npm` package, just install it to the project like you normally would.
-- If it's a Git repository, add it as a submodule to [src/handlers](src/handlers).
-
-**Please try to avoid CDNs (Content Delivery Networks).** They're really cool on paper, but they don't work well with TypeScript, and each one introduces a tiny bit of instability. For a project that leans heavily on external dependencies, those bits of instability can add up fast.
-
-- If you need to load a WebAssembly binary (or similar), add its path to [vite.config.js](vite.config.js) and target it under `/convert/wasm/`. **Do not link to node_modules**.
+GPL-2.0 (see LICENSE).
