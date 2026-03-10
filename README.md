@@ -18,7 +18,13 @@ This fork focuses on shipping more conversions and keeping them regression-teste
 - DXF conversions (example routes covered by tests: DXF→SVG and PNG→DXF)
 - Optional format-cache file to speed up startup
 
-## Use it
+Live site
+This fork can be published with GitHub Pages (via GitHub Actions). Once enabled, the URL will be:
+
+https://smokydastona.github.io/convert-stl/
+
+
+Usage
 
 1. Open the site (GitHub Pages) or run locally.
 2. Drag a file into the page.
