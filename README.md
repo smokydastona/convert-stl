@@ -24,6 +24,22 @@ https://smokydastona.github.io/convert-stl/
 
 Tip: if you don’t see a format, try searching by extension or MIME.
 
+### Troubleshooting: “NotReadableError” when converting
+
+If you see an error like `NotReadableError: The requested file could not be read`, the converter usually didn’t even reach the conversion step — the browser couldn’t read the file.
+
+Common causes:
+
+- Cloud/placeholder files (OneDrive/Dropbox/Google Drive) that are not fully downloaded
+- Another app locking the file
+- OS/browser permission restrictions
+
+Fixes:
+
+- Copy the file to a local folder (e.g. Desktop) and re-select it
+- If it’s in OneDrive/Dropbox, mark it “available offline” / ensure it’s fully downloaded
+- Close any app that might have the file open
+
 ## Differences vs upstream (comprehensive)
 
 This section documents what is different in this fork compared to `p2r3/convert`.
@@ -83,7 +99,18 @@ This fork adds/expands tests beyond upstream:
 
 - Updates GitHub Actions workflows (Pages, Electron, Docker) to work reliably for this fork.
 - Improves Puppeteer/Chrome installation behavior in CI (especially for Electron packaging).
+- Pins Bun and includes a Windows fallback installer to reduce flaky CI failures when GitHub release assets temporarily return 5xx.
 - Keeps `VITE_BASE` handling correct for GitHub Pages deployment.
+
+### Releases
+
+Forks can be tagged and released normally.
+
+- Create a tag: `git tag -a <tag-name> -m <tag-name>`
+- Push it: `git push origin <tag-name>`
+- Publish on GitHub: Repo → Releases → “Draft a new release” → choose the tag
+
+This fork has a tag named `3d-dark-mode-converter`.
 
 ## Run locally
 
@@ -153,7 +180,7 @@ The lists below are generated from git by comparing this fork’s `HEAD` against
 
 At the time of writing:
 
-- `HEAD`: `a7a70431fd456aa47669c8428128fa6c6b5a73a5`
+- `HEAD`: `da7c0970ce5ad23d75fd1180d384834452de6b7c`
 - merge-base with `upstream/master`: `f096954d36816b16d36558bb571c0a3fc4eb6172`
 
 To regenerate locally:
