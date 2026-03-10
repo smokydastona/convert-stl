@@ -320,6 +320,17 @@ async function buildOptionList () {
     updateReachabilityUi();
   };
 
+  // Prevent "export-only" formats from being offered as outputs.
+  // If a format cannot be used as an input anywhere, exporting to it often
+  // creates a dead-end for users.
+  const importableKeys = new Set<string>();
+  for (const formats of window.supportedFormatCache.values()) {
+    for (const fmt of formats ?? []) {
+      if (!fmt?.mime) continue;
+      if (fmt.from) importableKeys.add(`${fmt.mime}(${fmt.format})`);
+    }
+  }
+
   for (const handler of handlers) {
     const supportedFormats = window.supportedFormatCache.get(handler.name);
     if (!supportedFormats) {
@@ -351,6 +362,8 @@ async function buildOptionList () {
       newOption.setAttribute("mime-type", format.mime);
       newOption.setAttribute("format-id", `${format.mime}(${format.format})`);
 
+      const isImportableSomewhere = importableKeys.has(`${format.mime}(${format.format})`);
+
       const formatDescriptor = format.format.toUpperCase();
       if (simpleMode) {
         // Hide any handler-specific information in simple mode
@@ -371,7 +384,7 @@ async function buildOptionList () {
         clone.onclick = clickHandler;
         ui.inputList.appendChild(clone);
       }
-      if (format.to && addToOutputs) {
+      if (format.to && addToOutputs && isImportableSomewhere) {
         const clone = newOption.cloneNode(true) as HTMLButtonElement;
         clone.onclick = clickHandler;
         ui.outputList.appendChild(clone);

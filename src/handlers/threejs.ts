@@ -16,6 +16,154 @@ import { PLYExporter } from "three/addons/exporters/PLYExporter.js";
 import { mergeGeometries, mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
 import type { GLTF } from "three/addons/loaders/GLTFLoader.js";
 
+type BlockbenchRotation = {
+  origin?: [number, number, number];
+  axis?: "x" | "y" | "z" | string;
+  angle?: number;
+};
+
+type BlockbenchElement = {
+  name?: string;
+  from?: [number, number, number];
+  to?: [number, number, number];
+  rotation?: BlockbenchRotation;
+};
+
+type SparseVoxelGridJson = {
+  size: { x: number; y: number; z: number };
+  bbox?: { min: { x: number; y: number; z: number }; max: { x: number; y: number; z: number } };
+  voxels: Array<[number, number, number]>;
+};
+
+function tryParseJson(text: string): any {
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    throw new Error("Invalid JSON");
+  }
+}
+
+function buildMeshForFromTo(from: [number, number, number], to: [number, number, number], rotation?: BlockbenchRotation): THREE.Mesh {
+  const fx = from[0], fy = from[1], fz = from[2];
+  const tx = to[0], ty = to[1], tz = to[2];
+  const sx = Math.max(0.0001, tx - fx);
+  const sy = Math.max(0.0001, ty - fy);
+  const sz = Math.max(0.0001, tz - fz);
+  const cx = (fx + tx) / 2;
+  const cy = (fy + ty) / 2;
+  const cz = (fz + tz) / 2;
+
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(1, 1, 1),
+    new THREE.MeshStandardMaterial({ color: 0xffffff })
+  );
+  mesh.scale.set(sx, sy, sz);
+
+  const origin = new THREE.Vector3(
+    rotation?.origin?.[0] ?? 0,
+    rotation?.origin?.[1] ?? 0,
+    rotation?.origin?.[2] ?? 0,
+  );
+
+  // Position relative to rotation origin, rotate, then translate back.
+  mesh.position.set(cx - origin.x, cy - origin.y, cz - origin.z);
+  const axis = (rotation?.axis ?? "") as string;
+  const angle = THREE.MathUtils.degToRad(rotation?.angle ?? 0);
+  if (angle !== 0) {
+    if (axis === "x") mesh.rotateX(angle);
+    else if (axis === "y") mesh.rotateY(angle);
+    else if (axis === "z") mesh.rotateZ(angle);
+  }
+  mesh.position.add(origin);
+
+  return mesh;
+}
+
+function importBlockbenchObject(json: any): THREE.Group {
+  const group = new THREE.Group();
+
+  // Common Blockbench/Minecraft Java block model export shape.
+  const elements = (json?.elements ?? json?.cubes) as unknown;
+  if (Array.isArray(elements)) {
+    for (const el of elements as BlockbenchElement[]) {
+      if (!el?.from || !el?.to) continue;
+      const mesh = buildMeshForFromTo(el.from, el.to, el.rotation);
+      mesh.name = el.name ?? "element";
+      group.add(mesh);
+    }
+    if (group.children.length > 0) return group;
+  }
+
+  // Blockbench/Minecraft Bedrock geometry export shape (very minimal support).
+  const geometries = (json?.["minecraft:geometry"] ?? json?.minecraft_geometry) as unknown;
+  if (Array.isArray(geometries) && geometries.length > 0) {
+    const geo0 = geometries[0];
+    const bones = geo0?.bones;
+    if (Array.isArray(bones)) {
+      for (const bone of bones) {
+        const cubes = bone?.cubes;
+        if (!Array.isArray(cubes)) continue;
+        for (const cube of cubes) {
+          const origin = cube?.origin;
+          const size = cube?.size;
+          if (!Array.isArray(origin) || !Array.isArray(size) || origin.length < 3 || size.length < 3) continue;
+          const from: [number, number, number] = [origin[0], origin[1], origin[2]];
+          const to: [number, number, number] = [origin[0] + size[0], origin[1] + size[1], origin[2] + size[2]];
+          const mesh = buildMeshForFromTo(from, to);
+          mesh.name = cube?.name ?? bone?.name ?? "cube";
+          group.add(mesh);
+        }
+      }
+      if (group.children.length > 0) return group;
+    }
+  }
+
+  throw new Error("Unsupported Blockbench JSON (no elements/cubes found)");
+}
+
+function importSparseVoxelGrid(json: any): THREE.Group {
+  const data = json as SparseVoxelGridJson;
+  if (!data || !data.size || !Array.isArray(data.voxels)) {
+    throw new Error("Unsupported voxel JSON (missing size/voxels)");
+  }
+
+  const sizeX = Math.max(1, Number(data.size.x) || 1);
+  const sizeY = Math.max(1, Number(data.size.y) || 1);
+  const sizeZ = Math.max(1, Number(data.size.z) || 1);
+
+  const bboxMin = data.bbox?.min ?? { x: 0, y: 0, z: 0 };
+  const bboxMax = data.bbox?.max ?? { x: sizeX, y: sizeY, z: sizeZ };
+
+  const voxelSizeX = (bboxMax.x - bboxMin.x) / sizeX;
+  const voxelSizeY = (bboxMax.y - bboxMin.y) / sizeY;
+  const voxelSizeZ = (bboxMax.z - bboxMin.z) / sizeZ;
+
+  const geom = new THREE.BoxGeometry(
+    Math.max(0.0001, voxelSizeX),
+    Math.max(0.0001, voxelSizeY),
+    Math.max(0.0001, voxelSizeZ),
+  );
+  const mat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+
+  const group = new THREE.Group();
+  for (const v of data.voxels) {
+    if (!Array.isArray(v) || v.length < 3) continue;
+    const [x, y, z] = v;
+    const cx = bboxMin.x + (Number(x) + 0.5) * voxelSizeX;
+    const cy = bboxMin.y + (Number(y) + 0.5) * voxelSizeY;
+    const cz = bboxMin.z + (Number(z) + 0.5) * voxelSizeZ;
+    const mesh = new THREE.Mesh(geom, mat);
+    mesh.position.set(cx, cy, cz);
+    group.add(mesh);
+  }
+
+  if (group.children.length === 0) {
+    throw new Error("Unsupported voxel JSON (no voxels)");
+  }
+
+  return group;
+}
+
 function exportBlockbenchFromObject(object: THREE.Object3D, voxelSize = 1.0, maxCubes = 5000): Uint8Array {
   const geometries: THREE.BufferGeometry[] = [];
   const mat = new THREE.Matrix4();
@@ -170,10 +318,20 @@ class threejsHandler implements FormatHandler {
       format: "blockbench",
       extension: "json",
       mime: "application/json",
-      from: false,
+      from: true,
       to: true,
       internal: "blockbench",
       category: "model",
+    },
+    {
+      name: "Voxel Grid JSON (Sparse)",
+      format: "voxels",
+      extension: "json",
+      mime: "application/vnd.voxel+json",
+      from: true,
+      to: false,
+      internal: "voxels",
+      category: ["model", "voxel"],
     },
     CommonFormats.PNG.supported("png", false, true),
     CommonFormats.JPEG.supported("jpeg", false, true),
@@ -207,6 +365,18 @@ class threejsHandler implements FormatHandler {
 
       try {
         switch (inputFormat.internal) {
+          case "blockbench": {
+            const text = new TextDecoder().decode(inputFile.bytes);
+            const json = tryParseJson(text);
+            object = importBlockbenchObject(json);
+            break;
+          }
+          case "voxels": {
+            const text = new TextDecoder().decode(inputFile.bytes);
+            const json = tryParseJson(text);
+            object = importSparseVoxelGrid(json);
+            break;
+          }
           case "glb": {
             const gltf: GLTF = await new Promise((resolve, reject) => {
               const loader = new GLTFLoader();

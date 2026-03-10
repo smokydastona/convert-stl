@@ -190,10 +190,23 @@ async function main() {
   try {
     const page = await browser.newPage();
 
+    const browserErrors = [];
+
     page.on("console", (msg) => {
       // Useful for diagnosing boot failures.
       // eslint-disable-next-line no-console
       console.log(`[browser:${msg.type()}] ${msg.text()}`);
+
+      if (msg.type() === "error") {
+        browserErrors.push(msg.text());
+      }
+    });
+
+    page.on("pageerror", (err) => {
+      const text = String(err);
+      browserErrors.push(text);
+      // eslint-disable-next-line no-console
+      console.error(`[browser:pageerror] ${text}`);
     });
 
     await page.goto(`http://localhost:${port}${basePath}index.html`, { waitUntil: "domcontentloaded" });
@@ -204,6 +217,31 @@ async function main() {
         && typeof window.traversionGraph?.getData === "function"
         && window.traversionGraph.getData().nodes.length > 0,
       { timeout: 180000 }
+    );
+
+    const outputImportabilityReport = await page.evaluate(() => {
+      const importable = new Set();
+      for (const formats of window.supportedFormatCache.values()) {
+        for (const fmt of formats ?? []) {
+          if (!fmt?.mime) continue;
+          if (fmt.from) importable.add(`${fmt.mime}(${fmt.format})`);
+        }
+      }
+
+      const missing = [];
+      for (const btn of Array.from(document.querySelectorAll("#to-list button"))) {
+        if (!(btn instanceof HTMLButtonElement)) continue;
+        const id = btn.getAttribute("format-id");
+        if (!id) continue;
+        if (!importable.has(id)) missing.push({ id, text: btn.textContent ?? "" });
+      }
+
+      return { missingCount: missing.length, missing };
+    });
+
+    assert(
+      outputImportabilityReport.missingCount === 0,
+      `Output list contains formats that are not importable anywhere.\n${JSON.stringify(outputImportabilityReport, null, 2)}`,
     );
 
     async function attemptConversion(files, from, to) {
@@ -269,6 +307,21 @@ async function main() {
       assert(json.size && typeof json.size.x === "number", "Expected size in JSON");
       assert(Array.isArray(json.voxels), "Expected voxels array");
     }
+
+    {
+      const conv = await attemptConversion(
+        ["blockbench_simple.json"],
+        { mime: "application/json", format: "blockbench" },
+        { mime: "model/gltf-binary", format: "glb" }
+      );
+      assert(conv, "Expected Blockbench JSON→GLB conversion path");
+      const outBytes = toBytes(conv.files[0].bytes);
+      // GLB is binary glTF and should start with 'glTF'
+      assert(outBytes.length > 12, "Expected non-empty GLB");
+      assert(outBytes[0] === 0x67 && outBytes[1] === 0x6c && outBytes[2] === 0x54 && outBytes[3] === 0x46, "Expected GLB header 'glTF'");
+    }
+
+    assert(browserErrors.length === 0, `Browser errors:\n${browserErrors.join("\n")}`);
 
     // eslint-disable-next-line no-console
     console.log("Smoke tests passed.");

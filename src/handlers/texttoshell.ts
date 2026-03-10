@@ -6,8 +6,8 @@ class textToShellHandler implements FormatHandler {
   public name: string = "textToSH";
 
   public supportedFormats: FileFormat[] = [
-    CommonFormats.TEXT.supported("txt", true, false, true),
-    CommonFormats.SH.supported("sh", false, true, true)
+    CommonFormats.TEXT.supported("txt", true, true, true),
+    CommonFormats.SH.supported("sh", true, true, true)
   ];
 
   public ready: boolean = false;
@@ -25,21 +25,33 @@ class textToShellHandler implements FormatHandler {
     const outputFiles: FileData[] = [];
 
     for (const file of inputFiles) {
-      if (inputFormat.internal !== "txt" || outputFormat.internal !== "sh") {
-        throw new Error("Invalid output format.");
+      const baseName = file.name.split(".").slice(0, -1).join(".") || file.name;
+
+      // TXT -> SH
+      if (inputFormat.internal === "txt" && outputFormat.internal === "sh") {
+        const text = new TextDecoder().decode(file.bytes)
+          .replaceAll("\\", "\\\\")
+          .replaceAll("\"", "\\\"");
+
+        const script = `#!/bin/sh\necho "${text}"`;
+        outputFiles.push({
+          bytes: new TextEncoder().encode(script),
+          name: `${baseName}.${outputFormat.extension}`
+        });
+        continue;
       }
 
-      let text = new TextDecoder().decode(file.bytes).replaceAll("\\", "\\\\").replaceAll("\"", "\\\"");
+      // SH -> TXT (best-effort: preserve the script as text)
+      if (inputFormat.internal === "sh" && outputFormat.internal === "txt") {
+        const text = new TextDecoder().decode(file.bytes);
+        outputFiles.push({
+          bytes: new TextEncoder().encode(text),
+          name: `${baseName}.txt`
+        });
+        continue;
+      }
 
-      let newText = `#!/bin/sh\necho "${text}"`;
-      const name = file.name.split(".").slice(0, -1).join(".") +
-        "." +
-        outputFormat.extension;
-
-      outputFiles.push({
-        bytes: new TextEncoder().encode(newText), 
-        name: name
-      });
+      throw new Error("Invalid output format.");
     }
 
     return outputFiles;
