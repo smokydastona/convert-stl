@@ -1,4 +1,4 @@
-# Convert (this fork)
+# Convert (fork: convert-stl)
 
 A “runs-locally-in-your-browser” file converter built on Vite + TypeScript.
 No uploads: files are processed on your machine in the browser UI (or packaged as a desktop app).
@@ -7,24 +7,15 @@ This repository is a fork of the upstream project:
 
 - Upstream: https://github.com/p2r3/convert
 
-This fork focuses on shipping more conversions and keeping them regression-tested.
+The goal of this fork is to add more conversions (especially 3D/voxel tooling) and keep them regression-tested.
 
-## Highlights
+## Live site
 
-- Hundreds of format routes via a graph/pathfinder (the UI finds a conversion path automatically)
-- Extra 3D/voxel conversions:
-  - Mesh (OBJ/STL/PLY/GLB) → Sponge schematic (`.schem`)
-  - Mesh (OBJ/STL/PLY/GLB) → sparse voxel grid JSON (`application/vnd.voxel+json`)
-- DXF conversions (example routes covered by tests: DXF→SVG and PNG→DXF)
-- Optional format-cache file to speed up startup
-
-Live site
 This fork can be published with GitHub Pages (via GitHub Actions). Once enabled, the URL will be:
 
 https://smokydastona.github.io/convert-stl/
 
-
-Usage
+## Usage
 
 1. Open the site (GitHub Pages) or run locally.
 2. Drag a file into the page.
@@ -32,6 +23,67 @@ Usage
 4. Click **Convert**.
 
 Tip: if you don’t see a format, try searching by extension or MIME.
+
+## Differences vs upstream (comprehensive)
+
+This section documents what is different in this fork compared to `p2r3/convert`.
+
+If you need a *guaranteed exhaustive* accounting, scroll down to **Exhaustive diff (regenerate anytime)**.
+
+### New/expanded conversions (handlers)
+
+This fork adds or significantly expands the following conversion handlers:
+
+- **DXF support**
+  - Adds DXF handling routes and tests (examples covered: DXF→SVG and PNG→DXF).
+- **3D pipeline expansions (Three.js + custom mesh tooling)**
+  - Adds mesh import/cleanup/export utilities and additional 3D conversion routes.
+  - Adds “pixel-art height” / heightfield-based mesh workflows.
+- **Voxel + Minecraft-ish tooling**
+  - Adds mesh voxelization and Minecraft-focused exporters.
+  - Adds sparse voxel grid JSON export and import (`application/vnd.voxel+json`).
+- **Blockbench JSON import**
+  - Blockbench `.json` is now importable (and covered by smoke conversion to GLB).
+- **More archive/media/document formats**
+  - Adds libarchive-based archive format support (e.g. 7z/rar paths where supported by the WASM build).
+  - Adds PSD and additional PDF-related conversion wiring.
+  - Adds subtitle conversions.
+
+Some existing handlers are also modified (e.g., FFmpeg/ImageMagick wiring tweaks, format normalization improvements).
+
+### Graph/pathfinding + UI guardrails
+
+Upstream already uses a graph/pathfinder for conversion routes; this fork extends guardrails so users don’t land in “dead-end” format situations:
+
+- **Reachability enforcement**: prefers/selects only formats that are actually reachable.
+- **No export-only outputs in the UI**: output formats are filtered so a format is only offered as an output if it is importable somewhere in the app.
+
+### Startup performance + cache handling
+
+- Includes a default `public/cache.json` so the app doesn’t request a missing cache file.
+- Keeps `buildCache.js` and cache workflows aligned with CI/browser-based enumeration.
+
+### Tests
+
+This fork adds/expands tests beyond upstream:
+
+- **Node + Puppeteer smoke tests** (`test/smoke.node.mjs`)
+  - Executes conversions in the built app via the same UI/runtime code paths.
+  - Fails the run on browser `console.error` and `pageerror` to prevent silent runtime regressions.
+  - Includes a guard ensuring the UI’s output list doesn’t contain non-importable formats.
+- Adds additional fixtures used by tests (OBJ/DXF/Blockbench JSON examples, etc.).
+
+### Developer tooling + project structure
+
+- Adds/uses Bun configuration (`bunfig.toml`) and scopes Bun test discovery.
+- Adds a Node-focused TypeScript config (`tsconfig.node.json`) and shims (`src/shims.d.ts`) to keep browser + tooling builds happy.
+- Adds CLI/scripts for local workflows (e.g. STL→SCHEM script and block generation utilities).
+
+### CI / deployment
+
+- Updates GitHub Actions workflows (Pages, Electron, Docker) to work reliably for this fork.
+- Improves Puppeteer/Chrome installation behavior in CI (especially for Electron packaging).
+- Keeps `VITE_BASE` handling correct for GitHub Pages deployment.
 
 ## Run locally
 
@@ -94,6 +146,85 @@ This serves the app at `http://localhost:8080/convert/`.
   - Windows: `bun run desktop:dist:win`
   - macOS: `bun run desktop:dist:mac`
   - Linux: `bun run desktop:dist:linux`
+
+## Exhaustive diff (regenerate anytime)
+
+The lists below are generated from git by comparing this fork’s `HEAD` against `upstream/master`.
+
+At the time of writing:
+
+- `HEAD`: `a7a70431fd456aa47669c8428128fa6c6b5a73a5`
+- merge-base with `upstream/master`: `f096954d36816b16d36558bb571c0a3fc4eb6172`
+
+To regenerate locally:
+
+```bash
+git fetch upstream
+BASE=$(git merge-base HEAD upstream/master)
+git log --oneline "$BASE..HEAD"
+git diff --name-status "$BASE..HEAD"
+git diff --stat "$BASE..HEAD"
+```
+
+### Changed files (name-status)
+
+```text
+M       .github/workflows/docker.yml
+M       .github/workflows/electron.yml
+M       .github/workflows/pages.yml
+M       .gitignore
+M       README.md
+M       buildCache.js
+A       bunfig.toml
+M       docker/Dockerfile
+M       index.html
+M       package.json
+A       scripts/generateVanillaBlocks.ts
+A       scripts/stl2schem.ts
+M       src/CommonFormats.ts
+A       src/convert/three_d/dxf.ts
+A       src/convert/three_d/exporters.ts
+A       src/convert/three_d/index.ts
+A       src/convert/three_d/meshBuilder.ts
+A       src/convert/three_d/meshCleanup.ts
+A       src/convert/three_d/minecraft.ts
+A       src/convert/three_d/pixelArtHeight.ts
+A       src/convert/three_d/stlImport.ts
+M       src/handlers/FFmpeg.ts
+M       src/handlers/ImageMagick.ts
+A       src/handlers/adobePdf.ts
+A       src/handlers/dxf.ts
+M       src/handlers/flo.ts
+M       src/handlers/flo.worker.ts
+A       src/handlers/imageToMesh.ts
+A       src/handlers/img2mesh.ts
+M       src/handlers/index.ts
+A       src/handlers/libarchive.ts
+M       src/handlers/libopenmpt.ts
+A       src/handlers/meshVox.ts
+M       src/handlers/midi.ts
+A       src/handlers/obj2voxel.ts
+M       src/handlers/pandoc/pandoc.js
+A       src/handlers/pixelArt3d.ts
+A       src/handlers/psd.ts
+A       src/handlers/subtitles.ts
+M       src/handlers/texttoshell.ts
+M       src/handlers/threejs.ts
+M       src/handlers/txtToInfiniteCraft.ts
+M       src/main.ts
+M       src/normalizeMimeType.ts
+A       src/shims.d.ts
+M       style.css
+M       test/commonFormats.test.ts
+A       test/pixelArtHeight.test.ts
+A       test/resources/blockbench_simple.json
+A       test/resources/cube.obj
+A       test/resources/simple_triangle.dxf
+A       test/smoke.node.mjs
+M       tsconfig.json
+A       tsconfig.node.json
+M       vite.config.js
+```
 
 ## License
 
