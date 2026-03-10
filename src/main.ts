@@ -552,7 +552,25 @@ ui.convertButton.onclick = async function () {
 
     const inputFileData = [];
     for (const inputFile of inputFiles) {
-      const inputBuffer = await inputFile.arrayBuffer();
+      let inputBuffer: ArrayBuffer;
+      try {
+        inputBuffer = await inputFile.arrayBuffer();
+      } catch (e: any) {
+        const name = inputFile?.name ?? "(unknown)";
+        const errName = (e && typeof e === "object" && "name" in e) ? String((e as any).name) : "";
+        if (errName === "NotReadableError") {
+          throw new Error(
+            `Could not read the selected file: ${name}.\n\n` +
+            `This usually means the browser/OS could not access it (permission denied, file locked by another app, or cloud/placeholder file not fully available).\n\n` +
+            `Try:\n` +
+            `- Copy the file to a local folder (e.g. Desktop) and re-select it\n` +
+            `- If it's in OneDrive/Dropbox, make it available offline (download it)\n` +
+            `- Close any app that might be using/locking the file\n\n` +
+            `Original error: ${String(e)}`
+          );
+        }
+        throw new Error(`Could not read the selected file: ${name}.\nOriginal error: ${String(e)}`);
+      }
       const inputBytes = new Uint8Array(inputBuffer);
       if (
         inputFormat.mime === outputFormat.mime
@@ -588,7 +606,7 @@ ui.convertButton.onclick = async function () {
   } catch (e) {
 
     window.hidePopup();
-    alert("Unexpected error while routing:\n" + e);
+    alert("Unexpected error during conversion:\n" + e);
     console.error(e);
 
   }
