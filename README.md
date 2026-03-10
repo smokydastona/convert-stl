@@ -10,7 +10,7 @@ It keeps the same general goal: a browser-based file converter that runs locally
 
 This fork can be published with GitHub Pages (via GitHub Actions). Once enabled, the URL will be:
 
-`https://<owner>.github.io/<repo-name>/`
+https://smokydastona.github.io/convert-stl/
 
 To enable Pages:
 
