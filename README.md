@@ -76,7 +76,7 @@ _The following steps are optional, but recommended for performance:_
 
 When you first open the page, it'll take a while to generate the list of supported formats for each tool. If you open the console, you'll see it complaining a bunch about missing caches.
 
-After this is done (indicated by a `Built initial format list` message in the console), use `printSupportedFormatCache()` to get a JSON string with the cache data. You can then save this string to `cache.json` to skip that loading screen on startup.
+After this is done (indicated by a `Built initial format list` message in the console), use `printSupportedFormatCache()` to get a JSON string with the cache data. Save it to `public/cache.json` (or `dist/cache.json` for a one-off build) to skip that loading screen on startup.
 
 If you want to generate the cache file automatically (the same way CI does), run:
 

@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "vite",
     "test": "bun test",
+    "test:node": "npm run build && node test/smoke.node.mjs",
     "build": "tsc && vite build",
     "build:node": "tsc -p tsconfig.node.json",
     "cache:build": "bun run buildCache.js dist/cache.json --minify",

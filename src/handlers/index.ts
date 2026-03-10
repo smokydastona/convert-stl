@@ -67,6 +67,8 @@ import subtitlesHandler from "./subtitles.ts";
 import dxfHandler from "./dxf.ts";
 import adobePdfHandler from "./adobePdf.ts";
 import img2meshHandler from "./img2mesh.ts";
+import obj2voxelHandler from "./obj2voxel.ts";
+import meshVoxHandler from "./meshVox.ts";
 
 const handlers: FormatHandler[] = [];
 try { handlers.push(new svgTraceHandler()) } catch (_) { };
@@ -139,5 +141,7 @@ try { handlers.push(new subtitlesHandler()) } catch (_) { };
 try { handlers.push(new dxfHandler()) } catch (_) { };
 try { handlers.push(new adobePdfHandler()) } catch (_) { };
 try { handlers.push(new img2meshHandler()) } catch (_) { };
+try { handlers.push(new obj2voxelHandler()) } catch (_) { };
+try { handlers.push(new meshVoxHandler()) } catch (_) { };
 
 export default handlers;

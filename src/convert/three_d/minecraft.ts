@@ -5,6 +5,18 @@ import * as voxelizer from "voxelizer";
 import * as NBT from "nbtify";
 import { gzipSync } from "fflate";
 
+// Compatibility: some voxelizer versions still expect legacy THREE.Geometry APIs.
+// Modern Three.js uses BufferGeometry and removed computeFaceNormals; alias it.
+(() => {
+  const proto = (THREE.BufferGeometry as any)?.prototype;
+  if (!proto) return;
+  if (typeof proto.computeFaceNormals !== "function") {
+    proto.computeFaceNormals = function computeFaceNormalsCompat() {
+      return this.computeVertexNormals();
+    };
+  }
+})();
+
 const { Sampler, ArrayExporter } = voxelizer as any;
 
 export type VoxelVolume = {

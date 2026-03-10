@@ -325,6 +325,128 @@ test("no unreachable output is selectable for a chosen input", async () => {
   expect(result.ok).toBe(true);
 }, { timeout: 180000 });
 
+test("dxf → svg", async () => {
+
+  const conversion = await attemptConversion(
+    ["simple_triangle.dxf"],
+    CommonFormats.DXF,
+    CommonFormats.SVG
+  );
+
+  expect(conversion).toBeTruthy();
+  expect(conversion!.path.map(c => c.format.mime)).toEqual(["image/vnd.dxf", "image/svg+xml"]);
+  expect(conversion?.files.length).toBe(1);
+
+  const bytes = Uint8Array.from(Object.values(conversion!.files[0].bytes) as number[]);
+  const svgText = new TextDecoder().decode(bytes);
+  expect(svgText).toContain("<svg");
+
+}, { timeout: 60000 });
+
+test("png → dxf", async () => {
+
+  const conversion = await attemptConversion(
+    ["colors_50x50.png"],
+    CommonFormats.PNG,
+    CommonFormats.DXF
+  );
+
+  expect(conversion).toBeTruthy();
+  expect(conversion!.path[0].format.mime).toBe("image/png");
+  expect(conversion!.path[conversion!.path.length - 1].format.mime).toBe("image/vnd.dxf");
+  expect(conversion?.files.length).toBe(1);
+
+  const bytes = Uint8Array.from(Object.values(conversion!.files[0].bytes) as number[]);
+  const dxfText = new TextDecoder().decode(bytes);
+  expect(dxfText).toContain("SECTION");
+  expect(dxfText).toContain("ENTITIES");
+  // Mesh exporters should emit faces; this catches accidental routing to a non-mesh DXF.
+  expect(dxfText).toContain("3DFACE");
+
+}, { timeout: 60000 });
+
+test("obj → schem", async () => {
+
+  const objFormat: FileFormat = {
+    name: "Wavefront OBJ",
+    format: "obj",
+    extension: "obj",
+    mime: "model/obj",
+    from: true,
+    to: false,
+    internal: "obj",
+    category: "model",
+  };
+
+  const schemFormat: FileFormat = {
+    name: "Sponge Schematic",
+    format: "schem",
+    extension: "schem",
+    mime: "application/x-minecraft-schem",
+    from: false,
+    to: true,
+    internal: "schem",
+    category: ["model", "minecraft"],
+  };
+
+  const conversion = await attemptConversion(
+    ["cube.obj"],
+    objFormat,
+    schemFormat
+  );
+
+  expect(conversion).toBeTruthy();
+  expect(conversion?.files.length).toBe(1);
+
+  const bytes = Uint8Array.from(Object.values(conversion!.files[0].bytes) as number[]);
+  // Sponge schem is typically gzipped NBT.
+  expect(bytes[0]).toBe(0x1f);
+  expect(bytes[1]).toBe(0x8b);
+
+}, { timeout: 180000 });
+
+test("obj → voxel json", async () => {
+
+  const objFormat: FileFormat = {
+    name: "Wavefront OBJ",
+    format: "obj",
+    extension: "obj",
+    mime: "model/obj",
+    from: true,
+    to: false,
+    internal: "obj",
+    category: "model",
+  };
+
+  const voxelJsonFormat: FileFormat = {
+    name: "Voxel Grid JSON (Sparse)",
+    format: "voxels",
+    extension: "json",
+    mime: "application/vnd.voxel+json",
+    from: false,
+    to: true,
+    internal: "voxels",
+    category: ["model", "voxel"],
+  };
+
+  const conversion = await attemptConversion(
+    ["cube.obj"],
+    objFormat,
+    voxelJsonFormat
+  );
+
+  expect(conversion).toBeTruthy();
+  expect(conversion?.files.length).toBe(1);
+
+  const bytes = Uint8Array.from(Object.values(conversion!.files[0].bytes) as number[]);
+  const text = new TextDecoder().decode(bytes);
+  const json = JSON.parse(text);
+  expect(json).toBeTruthy();
+  expect(json.size?.x).toBeGreaterThan(0);
+  expect(Array.isArray(json.voxels)).toBe(true);
+
+}, { timeout: 180000 });
+
 // ==================================================================
 //                          END OF TESTS
 // ==================================================================
