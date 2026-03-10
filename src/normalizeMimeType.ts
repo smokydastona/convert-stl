@@ -33,6 +33,14 @@ function normalizeMimeType (mime: string) {
     case "application/musicxml": return "application/vnd.recordare.musicxml+xml";
     case "application/musicxml+xml": return "application/vnd.recordare.musicxml+xml";
     case "text/mathml": return "application/mathml+xml";
+    case "application/dxf": return "image/vnd.dxf";
+    case "application/x-dxf": return "image/vnd.dxf";
+    case "image/x-dxf": return "image/vnd.dxf";
+    case "application/illustrator": return "application/vnd.adobe.illustrator";
+    case "application/x-illustrator": return "application/vnd.adobe.illustrator";
+    case "image/x-illustrator": return "application/vnd.adobe.illustrator";
+    case "application/eps": return "application/postscript";
+    case "image/x-eps": return "application/postscript";
   }
   return mime;
 }

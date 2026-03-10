@@ -69,6 +69,27 @@ const CommonFormats = {
         "image/svg+xml",
         [Category.IMAGE, Category.VECTOR, Category.DOCUMENT]
     ),
+    DXF: new FormatDefinition(
+        "AutoCAD Drawing Exchange Format",
+        "dxf",
+        "dxf",
+        "image/vnd.dxf",
+        [Category.VECTOR, Category.DOCUMENT]
+    ),
+    EPS: new FormatDefinition(
+        "Encapsulated PostScript",
+        "eps",
+        "eps",
+        "application/postscript",
+        [Category.VECTOR, Category.DOCUMENT]
+    ),
+    AI: new FormatDefinition(
+        "Adobe Illustrator Artwork",
+        "ai",
+        "ai",
+        "application/vnd.adobe.illustrator",
+        [Category.VECTOR, Category.DOCUMENT]
+    ),
     // texts
     JSON: new FormatDefinition(
         "JavaScript Object Notation",
