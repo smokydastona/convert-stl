@@ -8,6 +8,7 @@ import { STLExporter } from "three/addons/exporters/STLExporter.js";
 import { OBJExporter } from "three/addons/exporters/OBJExporter.js";
 import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
 import { mergeGeometries, mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
+import { exportMeshToDxfBytes } from "src/convert/three_d/dxf.ts";
 
 const DEFAULT_THICKNESS = 2.0;
 const MAX_PATHS = 250;
@@ -281,6 +282,8 @@ async function exportMesh(mesh: THREE.Mesh, outputFormat: FileFormat): Promise<U
       });
       return new Uint8Array(glb);
     }
+    case "dxf":
+      return exportMeshToDxfBytes(mesh);
     case "blockbench":
       return exportBlockbenchFromMesh(mesh);
     default:
@@ -332,6 +335,7 @@ class imageToMeshHandler implements FormatHandler {
         category: "model",
         lossless: true,
       },
+      CommonFormats.DXF.builder("dxf").allowTo().markLossless(true),
       {
         name: "Blockbench Model JSON",
         format: "blockbench",
@@ -349,7 +353,7 @@ class imageToMeshHandler implements FormatHandler {
 
   async doConvert(inputFiles: FileData[], inputFormat: FileFormat, outputFormat: FileFormat): Promise<FileData[]> {
     if (!["png", "jpeg", "webp", "svg"].includes(inputFormat.internal)) throw new Error("Invalid input format");
-    if (!["stl", "obj", "glb", "blockbench"].includes(outputFormat.internal)) throw new Error("Invalid output format");
+    if (!["stl", "obj", "glb", "dxf", "blockbench"].includes(outputFormat.internal)) throw new Error("Invalid output format");
 
     const outputFiles: FileData[] = [];
     const decoder = new TextDecoder();

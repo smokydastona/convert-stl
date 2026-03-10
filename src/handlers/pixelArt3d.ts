@@ -8,6 +8,7 @@ import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
 
 import { exportMinecraftSchemBytes } from "src/convert/three_d/minecraft.ts";
 import { pixelArtHeightMeshFromRgba } from "src/convert/three_d/pixelArtHeight.ts";
+import { exportMeshToDxfBytes } from "src/convert/three_d/dxf.ts";
 
 function normalizeBinary(result: unknown): Uint8Array {
   if (typeof result === "string") return new TextEncoder().encode(result);
@@ -73,6 +74,11 @@ async function exportMesh(mesh: THREE.Mesh, outputFormat: FileFormat, baseName: 
     return { name: `${baseName}.schem`, bytes };
   }
 
+  if (outputFormat.internal === "pixelart-dxf") {
+    const bytes = exportMeshToDxfBytes(mesh);
+    return { name: `${baseName}.dxf`, bytes };
+  }
+
   throw new Error("Invalid output format");
 }
 
@@ -117,6 +123,7 @@ class PixelArt3dHandler implements FormatHandler {
         category: "model",
         lossless: true,
       },
+      CommonFormats.DXF.builder("pixelart-dxf").named("Pixel Art DXF (Color Height)").allowTo().markLossless(true),
       {
         name: "Pixel Art Sponge Schematic (Color Height)",
         format: "schem",
