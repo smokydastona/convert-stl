@@ -1,17 +1,28 @@
-# [Convert to it!](https://convert.to.it/)
-**Truly universal online file converter.**
+# Convert (fork)
 
-Many online file conversion tools are **boring** and **insecure**. They only allow conversion between two formats in the same medium (images to images, videos to videos, etc.), and they require that you _upload your files to some server_.
+This repository is a fork of the upstream project:
 
-This is not just terrible for privacy, it's also incredibly lame. What if you _really_ need to convert an AVI video to a PDF document? Try to find an online tool for that, I dare you.
+- Upstream: https://github.com/p2r3/convert
 
-[Convert.to.it](https://convert.to.it/) aims to be a tool that "just works". You're almost _guaranteed_ to get an output - perhaps not always the one you expected, but it'll try its best to not leave you hanging.
+It keeps the same general goal: a browser-based file converter that runs locally in your browser (no file uploads required), with a large and growing set of format conversions.
 
-For a semi-technical overview of this tool, check out the video: https://youtu.be/btUbcsTbVA8
+## Live site
+
+This fork can be published with GitHub Pages (via GitHub Actions). Once enabled, the URL will be:
+
+`https://<owner>.github.io/<repo-name>/`
+
+To enable Pages:
+
+1. In your GitHub repo, go to **Settings → Pages**.
+2. Under **Build and deployment**, set **Source** to **GitHub Actions**.
+3. Push to `main` or `master`, or run the **Publish to GitHub Pages** workflow manually.
+
+> Note: the workflow sets `VITE_BASE=/<repo-name>/` so assets resolve correctly on Pages.
 
 ## Usage
 
-1. Go to [convert.to.it](https://convert.to.it/)
+1. Open the live site for this fork (see “Live site”), or run it locally (see “Deployment”).
 2. Click the big blue box to add your file (or just drag it on to the window).
 3. An input format should have been automatically selected. If it wasn't, yikes! Try searching for it, or if it's really not there, see the "Issues" section below.
 4. Select an output format from the second list. If you're on desktop, that's the one on the right side. If you're on mobile, it'll be somewhere lower down.
@@ -27,7 +38,7 @@ Ever since the YouTube video released, we've been getting spammed with issues su
 
 There are thousands of file formats out there. It can take hours to add support for just one. The math is simple - we can't possibly support every single file. As such, simply listing your favorite file formats is not helpful. We already know that there are formats we don't support, we don't need tickets to tell us that.
 
-When suggesting a file format, you must _at minimum_:
+When suggesting a file format, please _at minimum_:
 - Make sure that there isn't already an issue about the same thing, and that we don't already support the format.
 - Explain what you expect the conversion to be like (what medium is it converting to/from). It's important to note here that simply parsing the underlying data is _not sufficient_. Imagine if we only treated SVG images as raw XML data and didn't support converting them to raster images - that would defeat the point.
 - Provide links to existing browser-based solutions if possible, or at the very least a reference for implementing the format, and make sure the license is compatible with GPL-2.0.
@@ -40,9 +51,23 @@ Though please note, "converting X to Y doesn't work" is **not** a bug report.  H
 
 ## Deployment
 
+### Live site (GitHub Pages)
+
+This repository can be published as a live site using GitHub Pages (via GitHub Actions).
+
+1. In your GitHub repo, go to **Settings → Pages**.
+2. Under **Build and deployment**, set **Source** to **GitHub Actions**.
+3. Push to `main` or `master`, or run the **Publish to GitHub Pages** workflow manually.
+
+Your Pages URL will be:
+
+`https://<owner>.github.io/<repo-name>/`
+
+> Note: the workflow sets `VITE_BASE=/<repo-name>/` so assets resolve correctly on Pages.
+
 ### Local development (Bun + Vite)
 
-1. Clone this repository ***WITH SUBMODULES***. You can use `git clone --recursive https://github.com/p2r3/convert` for that. Omitting submodules will leave you missing a few dependencies.
+1. Clone this repository ***WITH SUBMODULES*** (some handlers are vendored as submodules). Omitting submodules will leave you missing dependencies.
 2. Install [Bun](https://bun.sh/).
 3. Run `bun install` to install dependencies.
 4. Run `bunx vite` to start the development server.
@@ -52,6 +77,16 @@ _The following steps are optional, but recommended for performance:_
 When you first open the page, it'll take a while to generate the list of supported formats for each tool. If you open the console, you'll see it complaining a bunch about missing caches.
 
 After this is done (indicated by a `Built initial format list` message in the console), use `printSupportedFormatCache()` to get a JSON string with the cache data. You can then save this string to `cache.json` to skip that loading screen on startup.
+
+If you want to generate the cache file automatically (the same way CI does), run:
+
+```bash
+bun run build
+bunx puppeteer browsers install chrome
+bun run cache:build
+```
+
+`cache:build` runs [buildCache.js](buildCache.js), which uses Puppeteer and requires a Chrome binary to be available. GitHub Actions handles this automatically.
 
 ### Docker (prebuilt image)
 
@@ -76,6 +111,8 @@ docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.ym
 The first Docker build is expected to be slow because Chromium and related system packages are installed in the build stage (needed for puppeteer in `buildCache.js`). Later builds are usually much faster due to Docker layer caching.
 
 ## Contributing
+
+This fork tracks upstream but may include additional features and workflow changes. If you’re unsure whether something belongs upstream or here, open an issue in this fork first; we can decide whether to forward it.
 
 The best way to contribute is by adding support for new file formats (duh). Here's how that works:
 
